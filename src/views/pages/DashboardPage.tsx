@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  DollarSign, ShoppingBag, Users, Package, TrendingUp, TrendingDown,
+  DollarSign, ShoppingBag, Users, Package, TrendingUp,
   AlertTriangle, ArrowUpRight, Plus, Wallet, Receipt, Boxes,
 } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';

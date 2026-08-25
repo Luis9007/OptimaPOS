@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   BarChart3, TrendingUp, DollarSign, ShoppingBag, Download, Search, Printer,
-  Ban, Eye, FileText, Calendar, CreditCard, UserCheck, Package, ChevronDown, ChevronUp,
+  Ban, Eye, FileText, Package, AlertTriangle, Layers, ArrowUpRight, PieChart as PieIcon, CheckCircle2, ExternalLink,
 } from 'lucide-react';
+import { storageService } from '@/services/storageService';
 import {
   AreaChart, Area, BarChart as RBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend,
@@ -19,7 +20,16 @@ import { Select, Input } from '@/views/components/ui/Input';
 import { Dialog } from '@/views/components/ui/Dialog';
 import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { formatCurrency, formatNumber, formatDateTime, isSameDay, daysAgo, cn, exportToExcel } from '@/lib/utils';
-import type { Sale } from '@/models/types';
+import type { Sale, Product } from '@/models/types';
+
+interface InventoryReportRow extends Product {
+  categoryName: string;
+  brandName: string;
+  totalCostValue: number;
+  totalPriceValue: number;
+  unitsSold: number;
+  marginPercent: number;
+}
 
 export function ReportsPage() {
   const { db, currentUser, voidSale } = useStore();
@@ -28,8 +38,10 @@ export function ReportsPage() {
   const canExport = canPerformAction(currentUser?.role, 'report.export');
   const canVoid = canPerformAction(currentUser?.role, 'pos.void');
 
+  const [activeTab, setActiveTab] = useState<'sales' | 'inventory'>('sales');
   const [period, setPeriod] = useState<'7d' | '30d' | 'all'>('7d');
   const [searchFolio, setSearchFolio] = useState('');
+  const [searchInventory, setSearchInventory] = useState('');
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
 
   const completedSales = useMemo(() => db.sales.filter((s) => s.status === 'completada'), [db.sales]);
@@ -40,7 +52,7 @@ export function ReportsPage() {
     return completedSales.filter((s) => new Date(s.createdAt) >= daysAgo(days));
   }, [completedSales, period]);
 
-  // Sales matching search query across all sales (both completed and voided)
+  // Sales matching search query
   const searchedSales = useMemo(() => {
     if (!searchFolio.trim()) return db.sales;
     const q = searchFolio.toLowerCase();
@@ -81,7 +93,7 @@ export function ReportsPage() {
     return arr;
   }, [completedSales, period, db.products]);
 
-  // Payment methods
+  // Payment stats
   const paymentStats = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredSales.forEach((s) => { counts[s.paymentMethod] = (counts[s.paymentMethod] ?? 0) + s.total; });
@@ -111,7 +123,70 @@ export function ReportsPage() {
     return hours.filter((h) => h.ventas > 0);
   }, [filteredSales]);
 
-  const exportExcel = () => {
+  // === CÁLCULOS DEL REPORTES DE INVENTARIO CONSOLIDADO ===
+  const inventoryRows: InventoryReportRow[] = useMemo(() => {
+    const categoryMap = new Map(db.categories.map((c) => [c.id, c.name]));
+    const brandMap = new Map(db.brands.map((b) => [b.id, b.name]));
+
+    // Calcular unidades vendidas por producto
+    const salesMap = new Map<string, number>();
+    completedSales.forEach((sale) => {
+      sale.items.forEach((item) => {
+        salesMap.set(item.productId, (salesMap.get(item.productId) || 0) + item.quantity);
+      });
+    });
+
+    return db.products.map((p) => {
+      const totalCostValue = p.cost * p.stock;
+      const totalPriceValue = p.price * p.stock;
+      const marginPercent = p.price > 0 ? ((p.price - p.cost) / p.price) * 100 : 0;
+      return {
+        ...p,
+        categoryName: categoryMap.get(p.categoryId) || 'Sin categoría',
+        brandName: brandMap.get(p.brandId) || 'Sin marca',
+        totalCostValue,
+        totalPriceValue,
+        unitsSold: salesMap.get(p.id) || 0,
+        marginPercent,
+      };
+    });
+  }, [db.products, db.categories, db.brands, completedSales]);
+
+  const filteredInventoryRows = useMemo(() => {
+    if (!searchInventory.trim()) return inventoryRows;
+    const q = searchInventory.toLowerCase();
+    return inventoryRows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        r.sku.toLowerCase().includes(q) ||
+        r.categoryName.toLowerCase().includes(q) ||
+        r.brandName.toLowerCase().includes(q)
+    );
+  }, [inventoryRows, searchInventory]);
+
+  const totalInventoryCost = useMemo(() => inventoryRows.reduce((s, r) => s + r.totalCostValue, 0), [inventoryRows]);
+  const totalInventoryPrice = useMemo(() => inventoryRows.reduce((s, r) => s + r.totalPriceValue, 0), [inventoryRows]);
+  const totalPotentialProfit = totalInventoryPrice - totalInventoryCost;
+  const overallMargin = totalInventoryPrice > 0 ? (totalPotentialProfit / totalInventoryPrice) * 100 : 0;
+  const totalStockUnits = useMemo(() => inventoryRows.reduce((s, r) => s + r.stock, 0), [inventoryRows]);
+  const criticalStockCount = useMemo(() => inventoryRows.filter((r) => r.stock <= r.minStock && r.stock > 0).length, [inventoryRows]);
+  const outOfStockCount = useMemo(() => inventoryRows.filter((r) => r.stock === 0).length, [inventoryRows]);
+
+  // Valor de inventario por categoría
+  const categoryInventoryValuation = useMemo(() => {
+    const catMap: Record<string, { name: string; costValue: number; priceValue: number }> = {};
+    inventoryRows.forEach((r) => {
+      if (!catMap[r.categoryName]) {
+        catMap[r.categoryName] = { name: r.categoryName, costValue: 0, priceValue: 0 };
+      }
+      catMap[r.categoryName].costValue += r.totalCostValue;
+      catMap[r.categoryName].priceValue += r.totalPriceValue;
+    });
+    return Object.values(catMap).sort((a, b) => b.costValue - a.costValue);
+  }, [inventoryRows]);
+
+  // Exportar Ventas a Excel
+  const exportSalesExcel = () => {
     if (filteredSales.length === 0) {
       toast.warning('Sin ventas', 'No hay datos de ventas en este período para exportar');
       return;
@@ -130,7 +205,59 @@ export function ReportsPage() {
       s.status,
     ]);
     exportToExcel(`reporte_ventas_${new Date().toISOString().slice(0, 10)}.xlsx`, headers, rows, 'Ventas');
-    toast.success('Reporte exportado', 'El archivo de Excel (.xlsx) se descargó correctamente');
+    toast.success('Reporte exportado', 'El reporte de ventas (.xlsx) se descargó correctamente');
+  };
+
+  // Exportar Inventario Consolidado a Excel
+  const exportInventoryExcel = () => {
+    if (filteredInventoryRows.length === 0) {
+      toast.warning('Sin productos', 'No hay datos de inventario para exportar');
+      return;
+    }
+    const headers = [
+      'ID Producto',
+      'SKU',
+      'Código Barras',
+      'Nombre del Producto',
+      'Categoría',
+      'Marca',
+      'Stock Actual',
+      'Stock Mínimo',
+      'Estado Stock',
+      'Costo Unitario',
+      'Valor Total Costo',
+      'Precio Venta',
+      'Valor Total Venta',
+      'Ganancia Potencial',
+      'Margen Est. %',
+      'Unidades Vendidas (Rotación)',
+    ];
+    const rows = filteredInventoryRows.map((r) => {
+      const statusStr = r.stock === 0 ? 'Agotado' : r.stock <= r.minStock ? 'Stock Crítico' : 'Óptimo';
+      const profitVal = r.totalPriceValue - r.totalCostValue;
+
+      return [
+        r.id,
+        r.sku,
+        r.barcode || 'N/A',
+        r.name,
+        r.categoryName,
+        r.brandName,
+        r.stock,
+        r.minStock,
+        statusStr,
+        r.cost,
+        r.totalCostValue,
+        r.price,
+        r.totalPriceValue,
+        profitVal,
+        `${r.marginPercent.toFixed(1)}%`,
+        r.unitsSold,
+      ];
+    });
+
+    exportToExcel(`reporte_consolidado_inventario_${new Date().toISOString().slice(0, 10)}.xlsx`, headers, rows, 'Valorizacion_Inventario');
+    toast.success('Reporte exportado', 'El reporte de valorización de inventario (.xlsx) se descargó correctamente');
   };
 
   const handleVoidSale = (saleId: string) => {
@@ -139,11 +266,24 @@ export function ReportsPage() {
     setSelectedSale(null);
   };
 
-  const metrics = [
-    { label: 'Ingresos', value: formatCurrency(totalRevenue, sym), icon: DollarSign, color: 'from-primary to-teal-600' },
-    { label: 'Utilidad', value: formatCurrency(profit, sym), icon: TrendingUp, color: 'from-success to-emerald-600' },
-    { label: 'Ventas', value: formatNumber(filteredSales.length), icon: ShoppingBag, color: 'from-info to-blue-600' },
-    { label: 'Ticket promedio', value: formatCurrency(avgTicket, sym), icon: BarChart3, color: 'from-accent to-orange-500' },
+  const handleOpenDigitalReceipt = async (sale: Sale) => {
+    if (sale.receiptUrl) {
+      window.open(sale.receiptUrl, '_blank');
+      return;
+    }
+    try {
+      const url = await storageService.generateAndSaveSaleReceipt(sale, db.settings);
+      window.open(url, '_blank');
+    } catch {
+      toast.error('Error', 'No se pudo abrir el comprobante digital');
+    }
+  };
+
+  const salesMetrics = [
+    { label: 'Ingresos Totales', value: formatCurrency(totalRevenue, sym), icon: DollarSign, color: 'from-primary to-teal-600' },
+    { label: 'Utilidad Neta', value: formatCurrency(profit, sym), icon: TrendingUp, color: 'from-success to-emerald-600' },
+    { label: 'Ventas Completadas', value: formatNumber(filteredSales.length), icon: ShoppingBag, color: 'from-info to-blue-600' },
+    { label: 'Ticket Promedio', value: formatCurrency(avgTicket, sym), icon: BarChart3, color: 'from-accent to-orange-500' },
   ];
 
   const saleColumns: Column<Sale>[] = [
@@ -174,148 +314,388 @@ export function ReportsPage() {
     },
   ];
 
+  const inventoryColumns: Column<InventoryReportRow>[] = [
+    {
+      key: 'name',
+      header: 'Producto / SKU',
+      render: (r) => (
+        <div>
+          <span className="font-semibold text-text block">{r.name}</span>
+          <span className="text-[11px] text-muted font-mono">{r.sku} • {r.categoryName}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'stock',
+      header: 'Stock Actual',
+      align: 'center',
+      render: (r) => {
+        let variant: 'success' | 'warning' | 'danger' = 'success';
+        if (r.stock === 0) variant = 'danger';
+        else if (r.stock <= r.minStock) variant = 'warning';
+
+        return (
+          <div className="text-center">
+            <span className="font-bold text-sm text-text block">{r.stock} {r.unit}</span>
+            <Badge variant={variant} className="text-[10px] py-0 px-1.5 font-medium mt-0.5">
+              {r.stock === 0 ? 'Agotado' : r.stock <= r.minStock ? 'Stock Crítico' : 'Óptimo'}
+            </Badge>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'cost',
+      header: 'Costo Unit. / Total',
+      align: 'right',
+      render: (r) => (
+        <div className="text-right">
+          <span className="text-xs text-muted block">{formatCurrency(r.cost, sym)} c/u</span>
+          <span className="font-semibold text-text text-xs block">{formatCurrency(r.totalCostValue, sym)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'price',
+      header: 'Precio Venta / Total',
+      align: 'right',
+      render: (r) => (
+        <div className="text-right">
+          <span className="text-xs text-muted block">{formatCurrency(r.price, sym)} c/u</span>
+          <span className="font-bold text-primary text-xs block">{formatCurrency(r.totalPriceValue, sym)}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'marginPercent',
+      header: 'Margen Est.',
+      align: 'center',
+      render: (r) => (
+        <div className="text-center">
+          <span className="font-bold text-xs text-emerald-500 block">+{r.marginPercent.toFixed(1)}%</span>
+          <span className="text-[10px] text-muted">
+            ({formatCurrency(r.totalPriceValue - r.totalCostValue, sym)})
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'unitsSold',
+      header: 'Rotación (Ventas)',
+      align: 'center',
+      render: (r) => (
+        <div className="text-center">
+          <span className="font-bold text-xs text-text block">{r.unitsSold} unid.</span>
+          <span className="text-[10px] text-muted">vendidas</span>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <Breadcrumb items={[{ label: 'Inicio', href: '/app' }, { label: 'Reportes' }]} />
       <PageHeader
-        title="Reportes & Historial de Ventas"
-        description="Métricas financieras y búsqueda completa de ventas por número de folio"
+        title="Reportes & Inteligencia de Negocio"
+        description="Métricas financieras de ventas, valorización de bodega y rotación de productos"
         icon={<BarChart3 className="h-5 w-5" />}
         actions={
           <div className="flex items-center gap-2">
-            <Select value={period} onChange={(e) => setPeriod(e.target.value as '7d' | '30d' | 'all')} className="w-32">
-              <option value="7d">7 días</option>
-              <option value="30d">30 días</option>
-              <option value="all">Todo</option>
-            </Select>
-            {canExport && <Button variant="outline" onClick={exportExcel}><Download className="h-4 w-4" /> Exportar a Excel</Button>}
+            {activeTab === 'sales' && (
+              <Select value={period} onChange={(e) => setPeriod(e.target.value as '7d' | '30d' | 'all')} className="w-32">
+                <option value="7d">7 días</option>
+                <option value="30d">30 días</option>
+                <option value="all">Todo</option>
+              </Select>
+            )}
+            {canExport && (
+              <Button
+                variant="outline"
+                onClick={activeTab === 'sales' ? exportSalesExcel : exportInventoryExcel}
+              >
+                <Download className="h-4 w-4" /> Exportar a Excel
+              </Button>
+            )}
           </div>
         }
       />
 
-      {/* Metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {metrics.map((m, i) => (
-          <motion.div key={m.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-            <Card hover><CardContent className="p-5">
-              <div className={cn('h-11 w-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-md', m.color)}>
-                <m.icon className="h-5 w-5 text-white" />
-              </div>
-              <p className="text-sm text-muted mt-4">{m.label}</p>
-              <p className="font-display font-bold text-2xl text-text mt-1">{m.value}</p>
-            </CardContent></Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* SEARCH BY FOLIO NUMBER CARD */}
-      <Card className="mb-6 border-primary/30 shadow-md bg-surface">
-        <CardHeader className="pb-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Search className="h-5 w-5 text-primary" /> Búsqueda de Ventas por Número de Folio
-            </CardTitle>
-            <p className="text-xs text-muted mt-0.5">Ingresa el folio (ej. V-2026-00001), nombre de cliente o cajero para consultar cualquier recibo</p>
-          </div>
-          <Badge variant="primary">{searchedSales.length} venta{searchedSales.length !== 1 ? 's' : ''}</Badge>
-        </CardHeader>
-        <CardContent className="p-4 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
-            <Input
-              value={searchFolio}
-              onChange={(e) => setSearchFolio(e.target.value)}
-              placeholder="Buscar por folio (ej. V-2026-00001), cliente, método de pago..."
-              className="pl-10 h-11 text-sm bg-surface-2/50"
-            />
-          </div>
-
-          {searchedSales.length === 0 ? (
-            <EmptyState icon={<FileText className="h-8 w-8" />} title="No se encontraron ventas" description="Intenta con otro número de folio o nombre de cliente." />
-          ) : (
-            <DataTable columns={saleColumns} data={searchedSales} rowKey={(s) => s.id} onRowClick={(s) => setSelectedSale(s)} />
+      {/* Pestañas de Navegación del Módulo de Reportes */}
+      <div className="flex border-b border-border gap-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('sales')}
+          className={cn(
+            'py-2.5 px-4 font-semibold text-sm border-b-2 transition-all flex items-center gap-2',
+            activeTab === 'sales'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted hover:text-text'
           )}
-        </CardContent>
-      </Card>
+        >
+          <BarChart3 className="h-4 w-4" />
+          Reporte Financiero & Ventas
+        </button>
 
-      {/* Sales chart */}
-      <Card className="mb-6">
-        <CardHeader><CardTitle>Ventas y utilidad</CardTitle></CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={salesOverTime} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-              <defs>
-                <linearGradient id="cVentas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} /><stop offset="95%" stopColor="#0d9488" stopOpacity={0} /></linearGradient>
-                <linearGradient id="cUtil" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} /><stop offset="95%" stopColor="#16a34a" stopOpacity={0} /></linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v}`} />
-              <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} formatter={(v) => formatCurrency(Number(v), sym)} />
-              <Area type="monotone" dataKey="ventas" stroke="#0d9488" strokeWidth={2.5} fill="url(#cVentas)" name="Ventas" />
-              <Area type="monotone" dataKey="utilidad" stroke="#16a34a" strokeWidth={2.5} fill="url(#cUtil)" name="Utilidad" />
-              <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Payment methods */}
-        <Card>
-          <CardHeader><CardTitle>Métodos de pago</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <RBarChart data={paymentStats} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v}`} />
-                <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} formatter={(v) => formatCurrency(Number(v), sym)} />
-                <Bar dataKey="value" fill="#0d9488" radius={[6, 6, 0, 0]} barSize={40} />
-              </RBarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        {/* Sales by hour */}
-        <Card>
-          <CardHeader><CardTitle>Ventas por hora</CardTitle></CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={salesByHour} margin={{ left: -10 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
-                <XAxis dataKey="hour" tick={{ fontSize: 11, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} />
-                <Line type="monotone" dataKey="ventas" stroke="#f59e0b" strokeWidth={2.5} dot={{ fill: '#f59e0b', r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <button
+          type="button"
+          onClick={() => setActiveTab('inventory')}
+          className={cn(
+            'py-2.5 px-4 font-semibold text-sm border-b-2 transition-all flex items-center gap-2',
+            activeTab === 'inventory'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted hover:text-text'
+          )}
+        >
+          <Package className="h-4 w-4" />
+          Reporte Consolidado de Inventario ({inventoryRows.length})
+        </button>
       </div>
 
-      {/* Top products */}
-      <Card>
-        <CardHeader><CardTitle>Productos más vendidos</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          {topProducts.length === 0 ? (
-            <div className="p-8 text-center text-muted text-sm">Sin datos para este período</div>
-          ) : (
-            <div className="divide-y divide-border">
-              {topProducts.map((p, i) => (
-                <div key={i} className="flex items-center gap-4 p-4">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">{i + 1}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text truncate">{p.name}</p>
-                    <p className="text-xs text-muted">{p.qty} unidades vendidas</p>
+      {activeTab === 'sales' ? (
+        <>
+          {/* Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {salesMetrics.map((m, i) => (
+              <motion.div key={m.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <Card hover><CardContent className="p-5">
+                  <div className={cn('h-11 w-11 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-md', m.color)}>
+                    <m.icon className="h-5 w-5 text-white" />
                   </div>
-                  <span className="font-semibold text-text">{formatCurrency(p.revenue, sym)}</span>
+                  <p className="text-sm text-muted mt-4">{m.label}</p>
+                  <p className="font-display font-bold text-2xl text-text mt-1">{m.value}</p>
+                </CardContent></Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* SEARCH BY FOLIO NUMBER CARD */}
+          <Card className="mb-6 border-primary/30 shadow-md bg-surface">
+            <CardHeader className="pb-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Search className="h-5 w-5 text-primary" /> Búsqueda de Ventas por Número de Folio
+                </CardTitle>
+                <p className="text-xs text-muted mt-0.5">Ingresa el folio (ej. V-2026-00001), nombre de cliente o cajero para consultar cualquier recibo</p>
+              </div>
+              <Badge variant="primary">{searchedSales.length} venta{searchedSales.length !== 1 ? 's' : ''}</Badge>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+                <Input
+                  value={searchFolio}
+                  onChange={(e) => setSearchFolio(e.target.value)}
+                  placeholder="Buscar por folio (ej. V-2026-00001), cliente, método de pago..."
+                  className="pl-10 h-11 text-sm bg-surface-2/50"
+                />
+              </div>
+
+              {searchedSales.length === 0 ? (
+                <EmptyState icon={<FileText className="h-8 w-8" />} title="No se encontraron ventas" description="Intenta con otro número de folio o nombre de cliente." />
+              ) : (
+                <DataTable columns={saleColumns} data={searchedSales} rowKey={(s) => s.id} onRowClick={(s) => setSelectedSale(s)} />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Sales chart */}
+          <Card className="mb-6">
+            <CardHeader><CardTitle>Ventas y utilidad</CardTitle></CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={salesOverTime} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="cVentas" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} /><stop offset="95%" stopColor="#0d9488" stopOpacity={0} /></linearGradient>
+                    <linearGradient id="cUtil" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#16a34a" stopOpacity={0.3} /><stop offset="95%" stopColor="#16a34a" stopOpacity={0} /></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v}`} />
+                  <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} formatter={(v) => formatCurrency(Number(v), sym)} />
+                  <Area type="monotone" dataKey="ventas" stroke="#0d9488" strokeWidth={2.5} fill="url(#cVentas)" name="Ventas" />
+                  <Area type="monotone" dataKey="utilidad" stroke="#16a34a" strokeWidth={2.5} fill="url(#cUtil)" name="Utilidad" />
+                  <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Payment methods */}
+            <Card>
+              <CardHeader><CardTitle>Métodos de pago</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={260}>
+                  <RBarChart data={paymentStats} margin={{ left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v}`} />
+                    <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} formatter={(v) => formatCurrency(Number(v), sym)} />
+                    <Bar dataKey="value" fill="#0d9488" radius={[6, 6, 0, 0]} barSize={40} />
+                  </RBarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            {/* Sales by hour */}
+            <Card>
+              <CardHeader><CardTitle>Ventas por hora</CardTitle></CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={salesByHour} margin={{ left: -10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
+                    <XAxis dataKey="hour" tick={{ fontSize: 11, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }} />
+                    <Line type="monotone" dataKey="ventas" stroke="#f59e0b" strokeWidth={2.5} dot={{ fill: '#f59e0b', r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Top products */}
+          <Card>
+            <CardHeader><CardTitle>Productos más vendidos</CardTitle></CardHeader>
+            <CardContent className="p-0">
+              {topProducts.length === 0 ? (
+                <div className="p-8 text-center text-muted text-sm">Sin datos para este período</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {topProducts.map((p, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">{i + 1}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-text truncate">{p.name}</p>
+                        <p className="text-xs text-muted">{p.qty} unidades vendidas</p>
+                      </div>
+                      <span className="font-semibold text-text">{formatCurrency(p.revenue, sym)}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        /* PESTAÑA: REPORTE CONSOLIDADO DE INVENTARIO Y ROTACIÓN */
+        <div className="space-y-6">
+          {/* Metrics of Inventory Valuation */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card hover>
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center shadow-md text-white">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-muted mt-4">Inversión Total (al Costo)</p>
+                <p className="font-display font-bold text-2xl text-text mt-1">{formatCurrency(totalInventoryCost, sym)}</p>
+                <p className="text-xs text-muted mt-1">{totalStockUnits} unidades totales</p>
+              </CardContent>
+            </Card>
+
+            <Card hover>
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 flex items-center justify-center shadow-md text-white">
+                  <DollarSign className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-muted mt-4">Valor Total (a Venta)</p>
+                <p className="font-display font-bold text-2xl text-emerald-500 mt-1">{formatCurrency(totalInventoryPrice, sym)}</p>
+                <p className="text-xs text-emerald-500 font-medium mt-1 inline-flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3" /> Potencial proyectado
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card hover>
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-md text-white">
+                  <TrendingUp className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-muted mt-4">Ganancia Bruta Potencial</p>
+                <p className="font-display font-bold text-2xl text-text mt-1">{formatCurrency(totalPotentialProfit, sym)}</p>
+                <p className="text-xs text-primary font-bold mt-1">Margen Promedio: +{overallMargin.toFixed(1)}%</p>
+              </CardContent>
+            </Card>
+
+            <Card hover>
+              <CardContent className="p-5">
+                <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center shadow-md text-white">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <p className="text-sm text-muted mt-4">Alertas de Stock</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="font-display font-bold text-xl text-amber-500">{criticalStockCount} críticos</span>
+                  <span className="text-muted">•</span>
+                  <span className="font-display font-bold text-xl text-rose-500">{outOfStockCount} agotados</span>
+                </div>
+                <p className="text-xs text-muted mt-1">Requieren reposición inmediata</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Valorización por Categoría Chart */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <PieIcon className="h-5 w-5 text-primary" /> Valorización del Inventario por Categoría
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={280}>
+                <RBarChart data={categoryInventoryValuation} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgb(var(--sf-border))" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: 'rgb(var(--sf-muted))' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v}`} />
+                  <Tooltip
+                    contentStyle={{ background: 'rgb(var(--sf-surface))', border: '1px solid rgb(var(--sf-border))', borderRadius: '0.75rem', fontSize: '0.875rem' }}
+                    formatter={(v) => formatCurrency(Number(v), sym)}
+                  />
+                  <Legend wrapperStyle={{ fontSize: '0.75rem' }} />
+                  <Bar dataKey="costValue" fill="#3b82f6" name="Inversión al Costo" radius={[6, 6, 0, 0]} barSize={32} />
+                  <Bar dataKey="priceValue" fill="#10b981" name="Valor a Venta" radius={[6, 6, 0, 0]} barSize={32} />
+                </RBarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Tabla Consolidada de Valorización e Inventario */}
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-primary" /> Detalle Consolidado por Producto y Rotación
+                </CardTitle>
+                <p className="text-xs text-muted mt-0.5">Analiza la valorización individual, estado de stock y volumen de unidades vendidas</p>
+              </div>
+              <Badge variant="primary">{filteredInventoryRows.length} producto{filteredInventoryRows.length !== 1 ? 's' : ''}</Badge>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+                <Input
+                  value={searchInventory}
+                  onChange={(e) => setSearchInventory(e.target.value)}
+                  placeholder="Buscar por producto, SKU, categoría o marca..."
+                  className="pl-10"
+                />
+              </div>
+
+              <DataTable<InventoryReportRow>
+                data={filteredInventoryRows}
+                columns={inventoryColumns}
+                rowKey={(r) => r.id}
+                empty={
+                  <EmptyState
+                    icon={<Package className="h-10 w-10 text-muted" />}
+                    title="Sin productos encontrados"
+                    description="Intenta buscar con otros criterios o verifica tu catálogo de inventario."
+                  />
+                }
+              />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Detailed Sale Dialog Modal */}
       <Dialog
@@ -334,6 +714,9 @@ export function ReportsPage() {
                 )}
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" onClick={() => handleOpenDigitalReceipt(selectedSale)}>
+                  <ExternalLink className="h-4 w-4" /> Ver Comprobante Digital
+                </Button>
                 <Button variant="outline" onClick={() => window.print()}>
                   <Printer className="h-4 w-4" /> Reimprimir Ticket
                 </Button>
@@ -469,7 +852,7 @@ export function ReportsPage() {
           <div style={{ textAlign: 'center', fontSize: '10px' }}>
             <p style={{ margin: '2px 0', fontWeight: 'bold' }}>¡GRACIAS POR SU COMPRA!</p>
             <p style={{ margin: '2px 0', fontSize: '9px' }}>Conserve este comprobante</p>
-            <p style={{ margin: '2px 0', fontSize: '9px', color: '#555' }}>StoreFlow POS System</p>
+            <p style={{ margin: '2px 0', fontSize: '9px', color: '#555' }}>Optima POS System</p>
           </div>
         </div>
       )}

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge } from '@/views/compone
 import { Dialog } from '@/views/components/ui/Dialog';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
-import { cn, generateId, formatDateTime } from '@/lib/utils';
+import { cn, generateId } from '@/lib/utils';
 import type { User, Role } from '@/models/types';
 
 export function SettingsPage() {
@@ -25,7 +25,6 @@ export function SettingsPage() {
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<'todos' | Role>('todos');
-  const [auditSearch, setAuditSearch] = useState('');
 
   const [userForm, setUserForm] = useState<{
     name: string;
@@ -154,20 +153,10 @@ export function SettingsPage() {
     return matchSearch && matchRole;
   });
 
-  const filteredAuditLogs = (db.logs || []).filter((l) => {
-    if (!auditSearch.trim()) return true;
-    const q = auditSearch.toLowerCase();
-    return (
-      l.userName.toLowerCase().includes(q) ||
-      l.action.toLowerCase().includes(q) ||
-      l.detail.toLowerCase().includes(q)
-    );
-  });
-
   return (
     <div>
       <Breadcrumb items={[{ label: 'Inicio', href: '/app' }, { label: 'Configuración' }]} className="mb-3" />
-      <PageHeader title="Configuración" description="Personaliza tu sistema StoreFlow y gestiona el personal" icon={<Settings className="h-5 w-5" />} />
+      <PageHeader title="Configuración" description="Personaliza tu sistema Optima POS y gestiona el personal" icon={<Settings className="h-5 w-5" />} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6">
         {/* Tabs sidebar */}

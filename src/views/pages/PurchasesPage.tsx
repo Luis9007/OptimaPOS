@@ -1,14 +1,14 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Receipt, Plus, Search, Trash2, CheckCircle2, Clock, XCircle, Package, Camera, Loader2, Barcode, Wand2, Building2
+  Receipt, Plus, Search, Trash2, CheckCircle2, Clock, XCircle, Package, Camera
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { canPerformAction } from '@/controllers/permissions';
 import { Button } from '@/views/components/ui/Button';
-import { Input, Select, CurrencyInput, NumberInput, Textarea } from '@/views/components/ui/Input';
+import { Input, Select, CurrencyInput, NumberInput } from '@/views/components/ui/Input';
 import { Card, CardContent, Badge, EmptyState } from '@/views/components/ui/Card';
 import { Dialog } from '@/views/components/ui/Dialog';
 import { DataTable, type Column } from '@/views/components/ui/DataTable';

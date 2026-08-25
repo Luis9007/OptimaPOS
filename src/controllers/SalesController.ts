@@ -14,6 +14,7 @@ import { useCallback } from 'react';
 import type { AppDatabase, Sale } from '../models/types';
 import { generateId, generateReference } from '../lib/utils';
 import { salesService } from '../services/salesService';
+import { storageService } from '../services/storageService';
 
 /**
  * Custom Hook que encapsula la lógica de negocio para procesar ventas y anulaciones.
@@ -98,13 +99,28 @@ export function useSalesController(
 
       addLog('Venta Registrada', `Venta ${ref} por $${sale.total} (${sale.paymentMethod.toUpperCase()}) - Cliente: ${sale.customerName}`);
 
+      // Generar y almacenar comprobante digital de venta en Cloudflare R2
+      storageService
+        .generateAndSaveSaleReceipt(sale, db.settings)
+        .then((receiptUrl) => {
+          if (receiptUrl) {
+            setDb((prev) => ({
+              ...prev,
+              sales: prev.sales.map((item) =>
+                item.id === saleId ? { ...item, receiptUrl } : item
+              ),
+            }));
+          }
+        })
+        .catch(console.error);
+
       // Persistencia en la API via salesService
       const customer = sale.customerId ? db.customers.find((c) => c.id === sale.customerId) : undefined;
       salesService.insertSale(sale, db.products, customer).catch(console.error);
 
       return sale;
     },
-    [db.sales.length, db.products, db.customers, setDb, addLog]
+    [db.sales.length, db.products, db.customers, db.settings, setDb, addLog]
   );
 
   /**
@@ -122,18 +138,53 @@ export function useSalesController(
         if (!sale || sale.status === 'anulada') return prev;
         voidedRef = sale.reference;
 
-        // Reintegra el stock de los ítems de la venta anulada
+        // 1. Reintegra el stock de los ítems de la venta anulada
         const products = prev.products.map((prod) => {
           const item = sale.items.find((i) => i.productId === prod.id);
           return item ? { ...prod, stock: prod.stock + item.quantity } : prod;
         });
 
+        // 2. Si la venta fue a crédito, descuenta la deuda del cliente
+        let customers = prev.customers;
+        if (sale.paymentMethod === 'credito' && sale.customerId) {
+          customers = prev.customers.map((c) =>
+            c.id === sale.customerId
+              ? { ...c, balance: Math.max(0, (c.balance || 0) - sale.total) }
+              : c
+          );
+        }
+
+        // 3. Si fue en efectivo, registra un egreso/devolución en la sesión de caja abierta
+        let cashSessions = prev.cashSessions;
+        if (sale.paymentMethod === 'efectivo') {
+          cashSessions = prev.cashSessions.map((cs) =>
+            cs.status === 'abierta'
+              ? {
+                  ...cs,
+                  movements: [
+                    ...(cs.movements || []),
+                    {
+                      id: generateId('mov'),
+                      type: 'egreso',
+                      amount: sale.total,
+                      concept: `Devolución / Anulación Venta ${sale.reference}`,
+                      reference: sale.reference,
+                      userId: sale.userId,
+                      userName: sale.userName,
+                      createdAt: new Date().toISOString(),
+                    },
+                  ],
+                }
+              : cs
+          );
+        }
+
         const sales = prev.sales.map((s) => (s.id === id ? { ...s, status: 'anulada' as const } : s));
-        return { ...prev, sales, products };
+        return { ...prev, sales, products, customers, cashSessions };
       });
 
       if (voidedRef) {
-        addLog('Anulación de Venta', `Venta ${voidedRef} fue anulada`);
+        addLog('Anulación de Venta', `Venta ${voidedRef} fue anulada. Stock e inventario devueltos.`);
       }
       // Petición API REST via salesService
       salesService.voidSale(id).catch(console.error);

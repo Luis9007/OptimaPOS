@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingBag, Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { Button } from '@/views/components/ui/Button';
@@ -33,7 +33,7 @@ export function LoginPage() {
       const ok = login(email, password);
       setLoading(false);
       if (ok) {
-        toast.success('Bienvenido a StoreFlow', 'Sesión iniciada correctamente');
+        toast.success('Bienvenido a Optima POS', 'Sesión iniciada correctamente');
         navigate('/app');
       } else {
         setError('Correo o contraseña incorrectos');
@@ -68,10 +68,10 @@ export function LoginPage() {
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           <div className="flex items-center gap-3">
             <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-              <span className="font-display font-bold text-white text-xl">S</span>
+              <span className="font-display font-bold text-white text-xl">O</span>
             </div>
             <div>
-              <p className="font-display font-bold text-xl">StoreFlow</p>
+              <p className="font-display font-bold text-xl">Optima POS</p>
               <p className="text-xs text-white/60">POS & Gestión de Tiendas</p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export function LoginPage() {
               transition={{ duration: 0.6 }}
               className="font-display font-bold text-4xl leading-tight"
             >
-              Gestiona tu tienda con <span className="text-primary">fluidez</span> y control total.
+              Gestiona tu tienda con <span className="text-primary font-extrabold">Optima POS</span> y control total.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -114,7 +114,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <p className="text-white/40 text-xs">© 2025 StoreFlow. Todos los derechos reservados.</p>
+          <p className="text-white/40 text-xs">© 2026 Optima POS. Todos los derechos reservados.</p>
         </div>
       </div>
 
@@ -129,9 +129,9 @@ export function LoginPage() {
           {/* Mobile brand */}
           <div className="flex lg:hidden items-center gap-3 mb-8 justify-center">
             <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-              <span className="font-display font-bold text-white text-xl">S</span>
+              <span className="font-display font-bold text-white text-xl">O</span>
             </div>
-            <p className="font-display font-bold text-2xl text-text">StoreFlow</p>
+            <p className="font-display font-bold text-2xl text-text">Optima POS</p>
           </div>
 
           <h2 className="font-display font-bold text-2xl text-text">Iniciar sesión</h2>

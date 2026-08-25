@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Star, Trash2, Plus, Minus, ShoppingCart, X, CreditCard,
-  Wallet, Banknote, Clock, Barcode, CheckCircle2, XCircle, Printer, User, UserPlus, FileText, Lock, Unlock, Store, Camera,
+  Search, Star, Trash2, Plus, Minus, ShoppingCart, CreditCard,
+  Wallet, Banknote, Clock, Barcode, CheckCircle2, XCircle, Printer, User, UserPlus, FileText, Lock, Unlock, Store, Camera, Tag, Gift, Percent, ShieldCheck,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useStore } from '@/controllers/StoreController';
@@ -12,7 +12,8 @@ import { Input, Select, CurrencyInput } from '@/views/components/ui/Input';
 import { Card, Badge, EmptyState } from '@/views/components/ui/Card';
 import { Dialog } from '@/views/components/ui/Dialog';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
-import { formatCurrency, formatDateTime, generateId, generateSequentialId, cn } from '@/lib/utils';
+import { formatCurrency, formatDateTime, generateSequentialId, cn } from '@/lib/utils';
+import { evaluatePromotions } from '@/lib/promoEngine';
 import type { SaleItem, PaymentMethod, Sale, Customer } from '@/models/types';
 
 interface CartLine {
@@ -230,9 +231,35 @@ export function POSPage() {
     setCart((prev) => prev.filter((l) => l.productId !== productId));
   };
 
+  const selectedCustomer = useMemo(
+    () => db.customers.find((c) => c.id === customerId) || null,
+    [db.customers, customerId]
+  );
+
+  const customerWelcomeRedemptions = useMemo(() => {
+    if (!selectedCustomer) return 0;
+    const welcomePromo = (db.promotions || []).find((p) => p.isWelcomePromo || p.code === 'BIENVENIDA5K');
+    if (!welcomePromo) return 0;
+    const redemptionsInSales = (db.sales || []).filter((s) => {
+      if (s.customerId !== selectedCustomer.id || s.status === 'anulada') return false;
+      return (
+        (s.reference && s.reference.includes('BIENVENIDA')) ||
+        (s.items && s.items.some((i) => i.productName?.toLowerCase().includes('bienvenida'))) ||
+        (welcomePromo.code && s.discount >= welcomePromo.value && (s.subtotal + s.discount) >= (welcomePromo.minPurchaseAmount || 0))
+      );
+    }).length;
+    return Math.max(selectedCustomer.welcomeRedemptions || 0, redemptionsInSales);
+  }, [selectedCustomer, db.promotions, db.sales]);
+
+  const productsMap = useMemo(() => new Map(db.products.map((p) => [p.id, p])), [db.products]);
+
+  const promoResult = useMemo(() => {
+    return evaluatePromotions(cart, db.promotions || [], productsMap, undefined, selectedCustomer, customerWelcomeRedemptions);
+  }, [cart, db.promotions, productsMap, selectedCustomer, customerWelcomeRedemptions]);
+
   const subtotalGross = cart.reduce((s, l) => s + l.price * l.quantity, 0);
-  const totalDiscount = cart.reduce((s, l) => s + (l.price * l.quantity * (l.discount / 100)), 0);
-  const subtotalNet = subtotalGross - totalDiscount;
+  const totalDiscount = promoResult.totalPromoDiscount;
+  const subtotalNet = Math.max(0, subtotalGross - totalDiscount);
   const tax = subtotalNet * (db.settings.taxRate / 100);
   const total = subtotalNet + tax;
   const cashNum = cashReceived || 0;
@@ -310,14 +337,18 @@ export function POSPage() {
       return;
     }
 
-    const items: SaleItem[] = cart.map((l) => ({
-      productId: l.productId,
-      productName: l.productName,
-      quantity: l.quantity,
-      price: l.price,
-      discount: l.discount,
-      subtotal: l.price * l.quantity * (1 - l.discount / 100),
-    }));
+    const items: SaleItem[] = cart.map((l) => {
+      const itemPromo = promoResult.itemDiscounts[l.productId];
+      const effDiscount = itemPromo ? itemPromo.percentEffective : l.discount;
+      return {
+        productId: l.productId,
+        productName: l.productName,
+        quantity: l.quantity,
+        price: l.price,
+        discount: effDiscount,
+        subtotal: Math.max(0, l.price * l.quantity - (itemPromo?.totalDiscount || 0)),
+      };
+    });
 
     const customer = db.customers.find((c) => c.id === customerId);
     const calculatedChange = paymentMethod === 'efectivo' ? Math.max(0, cashValue - total) : 0;
@@ -337,6 +368,13 @@ export function POSPage() {
       userId: currentUser?.id ?? '',
       userName: currentUser?.name ?? '',
     });
+
+    if (customer && promoResult.appliedPromotions.some((p) => p.code === 'BIENVENIDA5K')) {
+      upsertCustomer({
+        ...customer,
+        welcomeRedemptions: (customer.welcomeRedemptions || 0) + 1,
+      });
+    }
 
     setLastSale(sale);
     setCart([]);
@@ -362,7 +400,7 @@ export function POSPage() {
           <Breadcrumb items={[{ label: 'Inicio', href: '/app' }, { label: 'Punto de Venta' }]} />
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-primary/10 border border-primary/20 text-primary font-bold text-xs">
             <Store className="h-3.5 w-3.5" />
-            <span className="truncate max-w-[200px]">{db.settings.name || 'StoreFlow'}</span>
+            <span className="truncate max-w-[200px]">{db.settings.name || 'Optima POS'}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -523,7 +561,9 @@ export function POSPage() {
               ) : (
                 cart.map((line) => {
                   const lineGross = line.price * line.quantity;
-                  const lineNet = lineGross * (1 - line.discount / 100);
+                  const itemPromo = promoResult.itemDiscounts[line.productId];
+                  const lineNet = itemPromo ? lineGross - itemPromo.totalDiscount : lineGross * (1 - line.discount / 100);
+                  const hasDiscount = lineGross > lineNet;
                   return (
                     <motion.div
                       key={line.productId}
@@ -534,11 +574,18 @@ export function POSPage() {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-text truncate">{line.productName}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-text truncate">{line.productName}</p>
+                            {itemPromo?.promoBadge && (
+                              <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-500 px-1.5 py-0.5 rounded truncate">
+                                {itemPromo.promoBadge}
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-muted">{formatCurrency(line.price, sym)} c/u</p>
                         </div>
                         <div className="text-right shrink-0">
-                          {line.discount > 0 ? (
+                          {hasDiscount ? (
                             <>
                               <p className="text-xs line-through text-muted">{formatCurrency(lineGross, sym)}</p>
                               <p className="text-sm font-semibold text-emerald-500">{formatCurrency(lineNet, sym)}</p>
@@ -678,17 +725,120 @@ export function POSPage() {
         }
       >
         {posStep === 'checkout' && (
-          <div className="space-y-5">
-            <div className="p-3 rounded-xl bg-surface-2 flex items-center justify-between text-sm">
-              <span className="text-muted flex items-center gap-1.5">
-                <User className="h-4 w-4 text-primary" /> Cliente seleccionado:
-              </span>
-              <span className="font-semibold text-text">
-                {db.customers.find((c) => c.id === customerId)?.name || 'Público general'}
-              </span>
+          <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1 sf-no-scrollbar">
+            {/* Header: Cliente Seleccionado */}
+            <div className="p-3 rounded-xl bg-surface-2 border border-border flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-primary shrink-0" />
+                <div>
+                  <span className="text-muted">Cliente: </span>
+                  <span className="font-semibold text-text">
+                    {selectedCustomer ? selectedCustomer.name : 'Público general'}
+                  </span>
+                  {selectedCustomer ? (
+                    <span className="ml-2 text-[11px] font-medium text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      Canjes de Bienvenida: {customerWelcomeRedemptions}/3
+                    </span>
+                  ) : (
+                    <span className="ml-2 text-[11px] font-medium text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full">
+                      Público sin registrar
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Financial Summary Breakdown */}
+            {/* 1. Resumen de Productos a Comprar */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-text uppercase tracking-wider flex items-center gap-1.5">
+                <ShoppingCart className="h-4 w-4 text-primary" /> Productos a Comprar ({cart.length})
+              </p>
+              <div className="max-h-40 overflow-y-auto rounded-xl border border-border bg-surface-2/50 divide-y divide-border text-xs">
+                {cart.map((item) => {
+                  const lineGross = item.price * item.quantity;
+                  const itemPromo = promoResult.itemDiscounts[item.productId];
+                  const lineNet = itemPromo ? lineGross - itemPromo.totalDiscount : lineGross * (1 - item.discount / 100);
+                  return (
+                    <div key={item.productId} className="p-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-text truncate">{item.productName}</span>
+                          {itemPromo?.promoBadge && (
+                            <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-500 px-1.5 py-0.5 rounded shrink-0">
+                              {itemPromo.promoBadge}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-muted text-[11px]">
+                          {item.quantity} x {formatCurrency(item.price, sym)}
+                        </span>
+                      </div>
+                      <div className="text-right font-semibold">
+                        {lineGross > lineNet ? (
+                          <>
+                            <span className="line-through text-muted text-[11px] block">{formatCurrency(lineGross, sym)}</span>
+                            <span className="text-emerald-500">{formatCurrency(lineNet, sym)}</span>
+                          </>
+                        ) : (
+                          <span className="text-text">{formatCurrency(lineGross, sym)}</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Promociones y Cupones Aplicados */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-text uppercase tracking-wider flex items-center gap-1.5">
+                <Tag className="h-4 w-4 text-emerald-500" /> Promociones y Cupones Aplicados ({promoResult.appliedPromotions.length})
+              </p>
+              {promoResult.appliedPromotions.length === 0 ? (
+                <div className="p-3 rounded-xl bg-surface-2/40 border border-border text-center text-xs text-muted">
+                  Sin promociones ni cupones aplicados a esta compra.
+                </div>
+              ) : (
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {promoResult.appliedPromotions.map((ap) => (
+                    <div
+                      key={ap.promotionId}
+                      className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs flex items-center justify-between gap-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {ap.code === 'BIENVENIDA5K' ? (
+                          <ShieldCheck className="h-4 w-4 text-emerald-500 shrink-0" />
+                        ) : ap.type === 'buy_x_get_y' ? (
+                          <Gift className="h-4 w-4 text-emerald-500 shrink-0" />
+                        ) : (
+                          <Percent className="h-4 w-4 text-emerald-500 shrink-0" />
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-text truncate">{ap.promotionName}</span>
+                            {ap.code && (
+                              <span className="font-mono text-[10px] font-bold bg-emerald-500/20 text-emerald-500 px-1 rounded">
+                                🏷️ {ap.code}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-emerald-500/90 truncate">
+                            {ap.code === 'BIENVENIDA5K' && selectedCustomer
+                              ? `Aplicada a la compra completa • Canje ${customerWelcomeRedemptions + 1}/3 de ${selectedCustomer.name}`
+                              : 'Aplicada automáticamente en el carrito'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="font-bold text-emerald-500 text-xs shrink-0">
+                        -{formatCurrency(ap.discountAmount, sym)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 3. Resumen Financiero Desglosado */}
             <div className="p-3.5 rounded-xl bg-surface-2 space-y-1.5 text-sm border border-border">
               <div className="flex justify-between text-muted">
                 <span>Subtotal bruto:</span>
@@ -1025,7 +1175,7 @@ export function POSPage() {
           <div style={{ textAlign: 'center', fontSize: '10px' }}>
             <p style={{ margin: '2px 0', fontWeight: 'bold' }}>¡GRACIAS POR SU COMPRA!</p>
             <p style={{ margin: '2px 0', fontSize: '9px' }}>Conserve este comprobante</p>
-            <p style={{ margin: '2px 0', fontSize: '9px', color: '#555' }}>StoreFlow POS System</p>
+            <p style={{ margin: '2px 0', fontSize: '9px', color: '#555' }}>Optima POS System</p>
           </div>
         </div>
       )}

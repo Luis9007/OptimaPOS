@@ -5,13 +5,13 @@ import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { canPerformAction } from '@/controllers/permissions';
 import { Button } from '@/views/components/ui/Button';
-import { Input, Textarea, Select } from '@/views/components/ui/Input';
+import { Input, Textarea } from '@/views/components/ui/Input';
 import { Card, CardContent, Badge, EmptyState } from '@/views/components/ui/Card';
 import { Dialog } from '@/views/components/ui/Dialog';
 import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
-import { formatCurrency, formatDate, formatDateTime, generateId, generateSequentialId, cn } from '@/lib/utils';
+import { formatCurrency, formatDateTime, generateSequentialId, cn } from '@/lib/utils';
 import type { Customer, PaymentMethod } from '@/models/types';
 
 const empty = (existingCustomers: Customer[] = []): Customer => ({

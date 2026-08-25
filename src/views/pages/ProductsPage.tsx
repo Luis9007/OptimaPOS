@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Package, Plus, Search, Pencil, Trash2, Star, AlertTriangle, Barcode, DollarSign, Wand2, Camera, Loader2, Sparkles, Tag,
+  Package, Plus, Search, Pencil, Trash2, Star, AlertTriangle, DollarSign, Wand2, Camera, Loader2, Tag,
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useStore } from '@/controllers/StoreController';

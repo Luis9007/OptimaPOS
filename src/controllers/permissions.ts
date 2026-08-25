@@ -13,7 +13,7 @@ import type { Role } from '../models/types';
 /** Claves identificadoras de los módulos principales de la aplicación */
 export type ModuleKey =
   | 'dashboard' | 'pos' | 'products' | 'inventory' | 'purchases'
-  | 'customers' | 'suppliers' | 'cash' | 'reports' | 'logs' | 'settings';
+  | 'customers' | 'suppliers' | 'cash' | 'reports' | 'promotions' | 'logs' | 'settings';
 
 /** Claves identificadoras de las acciones específicas restringidas */
 export type ActionKey =
@@ -24,6 +24,7 @@ export type ActionKey =
   | 'supplier.create' | 'supplier.edit' | 'supplier.delete'
   | 'user.create' | 'user.edit' | 'user.delete'
   | 'cash.open' | 'cash.close' | 'cash.movement'
+  | 'promotion.create' | 'promotion.edit' | 'promotion.delete'
   | 'report.export'
   | 'settings.edit'
   | 'data.reset'
@@ -31,7 +32,7 @@ export type ActionKey =
 
 /** Matriz de asignación de acceso a módulos por rol */
 const moduleAccess: Record<Role, ModuleKey[]> = {
-  supervisor: ['dashboard', 'pos', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'cash', 'reports', 'logs', 'settings'],
+  supervisor: ['dashboard', 'pos', 'products', 'inventory', 'purchases', 'customers', 'suppliers', 'cash', 'reports', 'promotions', 'logs', 'settings'],
   cajero: ['dashboard', 'pos', 'customers', 'cash', 'reports'],
 };
 
@@ -45,6 +46,7 @@ const actionAccess: Record<Role, ActionKey[]> = {
     'supplier.create', 'supplier.edit', 'supplier.delete',
     'user.create', 'user.edit', 'user.delete',
     'cash.open', 'cash.close', 'cash.movement',
+    'promotion.create', 'promotion.edit', 'promotion.delete',
     'report.export', 'settings.edit', 'pos.void',
   ],
   cajero: [

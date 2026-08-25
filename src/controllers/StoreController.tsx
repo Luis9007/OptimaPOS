@@ -30,7 +30,7 @@
  */
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { AppDatabase, ActivityLog, User } from '../models/types';
+import type { AppDatabase, ActivityLog, User, Promotion } from '../models/types';
 import { seedDatabase } from '../models/seed';
 import { generateId } from '../lib/utils';
 import { isSupabaseConfigured } from '../models/supabase';
@@ -208,6 +208,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sales,
           cashSessions,
           adjustments,
+          promotions: seedDatabase.promotions,
+          priceCostLogs: seedDatabase.priceCostLogs,
           settings,
           logs,
         });
@@ -267,6 +269,53 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // 8. Controlador de Dominio: Promociones y Cupones
+  const upsertPromotion = useCallback(
+    (p: Promotion) => {
+      setDb((prev) => {
+        const list = prev.promotions || [];
+        const index = list.findIndex((item) => item.id === p.id);
+        let updated: Promotion[];
+        if (index >= 0) {
+          updated = [...list];
+          updated[index] = p;
+        } else {
+          updated = [p, ...list];
+        }
+        return { ...prev, promotions: updated };
+      });
+      addLog('promotion.upsert', `Promoción guardada: ${p.name}`);
+    },
+    [addLog]
+  );
+
+  const deletePromotion = useCallback(
+    (id: string) => {
+      setDb((prev) => {
+        const list = prev.promotions || [];
+        const promo = list.find((p) => p.id === id);
+        if (promo) {
+          addLog('promotion.delete', `Promoción eliminada: ${promo.name}`);
+        }
+        return { ...prev, promotions: list.filter((p) => p.id !== id) };
+      });
+    },
+    [addLog]
+  );
+
+  const togglePromotionActive = useCallback(
+    (id: string) => {
+      setDb((prev) => {
+        const list = prev.promotions || [];
+        return {
+          ...prev,
+          promotions: list.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
+        };
+      });
+    },
+    []
+  );
+
   // Consolidación de todos los estados y funciones de los controladores en el objeto de contexto
   const value: StoreContextValue = {
     db,
@@ -297,6 +346,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     closeCash,
     addCashMovement,
     activeCashSession,
+    upsertPromotion,
+    deletePromotion,
+    togglePromotionActive,
     updateSettings,
     setTheme,
   };

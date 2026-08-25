@@ -46,8 +46,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       {/* Store Name Badge */}
       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface-2 border border-border/60 text-text shrink-0">
         <Store className="h-4 w-4 text-primary shrink-0" />
-        <span className="font-semibold text-sm truncate max-w-[150px] sm:max-w-[220px]" title={db.settings.name || 'StoreFlow'}>
-          {db.settings.name || 'StoreFlow'}
+        <span className="font-semibold text-sm truncate max-w-[150px] sm:max-w-[220px]" title={db.settings.name || 'Mi Tienda'}>
+          {db.settings.name || 'Mi Tienda'}
         </span>
       </div>
 

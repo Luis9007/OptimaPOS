@@ -23,6 +23,7 @@ import type {
   CashMovement,
   CompanySettings,
   PaymentMethod,
+  Promotion,
 } from '../models/types';
 
 /** Interfaz principal que consolida el estado global y las acciones de todos los controladores */
@@ -70,6 +71,11 @@ export interface StoreContextValue {
   closeCash: (amount: number) => void;
   addCashMovement: (m: Omit<CashMovement, 'id' | 'createdAt' | 'userId' | 'userName' | 'reference'>) => void;
   activeCashSession: CashSession | null;
+
+  // Promociones y Cupones
+  upsertPromotion: (p: Promotion) => void;
+  deletePromotion: (id: string) => void;
+  togglePromotionActive: (id: string) => void;
 
   // Configuración del Sistema (SettingsController ➔ settingsService)
   updateSettings: (s: Partial<CompanySettings>) => void;

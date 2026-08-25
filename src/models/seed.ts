@@ -8,7 +8,7 @@
  * - Proveído por `SettingsController.resetData()` para restaurar el sistema a su estado inicial.
  */
 
-import type { AppDatabase, Product, Sale, SaleItem, CashSession, Purchase } from './types';
+import type { AppDatabase, Product, Sale, SaleItem, CashSession, Purchase, Promotion, PriceCostAuditLog } from './types';
 import { generateId } from '../lib/utils';
 
 const now = new Date();
@@ -46,47 +46,40 @@ const brands = [
   { id: 'br_colgate', name: 'Colgate' },
   { id: 'br_unilever', name: 'Unilever' },
   { id: 'br_bimbo', name: 'Bimbo' },
+  { id: 'brand-1785344683802', name: 'Familia / Dersa' },
+  { id: 'brand_member_s_selection', name: "Member's Selection" },
+  { id: 'brand_medalla_de_oro', name: 'Medalla de Oro' },
+  { id: 'brand_refisal', name: 'Refisal' },
+  { id: 'brand_meel', name: 'Meel' },
+  { id: 'brand_al_fresco', name: 'Al Fresco' },
+  { id: 'brand_bonaropa', name: 'Bonaropa' },
+  { id: 'brand_aromatel', name: 'Aromatel' },
+  { id: 'brand_baygon', name: 'Baygon' },
+  { id: 'brand_alma_de_romero', name: 'Alma de Romero' },
+  { id: 'brand_ego', name: 'Ego' },
+  { id: 'brand_pan', name: 'Harina P.A.N.' },
+  { id: 'brand_colcafe', name: 'Colcafé' },
+  { id: 'brand_dona_pepa', name: 'Doña Pepa' },
 ];
-
-type SeedProduct = Pick<
-  Product,
-  'sku' | 'barcode' | 'name' | 'description' | 'categoryId' | 'brandId' | 'cost' | 'price' | 'stock' | 'minStock' | 'unit' | 'favorite'
->;
 
 /** Productos del catálogo inicial */
-const productSeeds: SeedProduct[] = [
-  { sku: 'COCA-600', barcode: '7501057530015', name: 'Coca-Cola 600ml', description: 'Refresco de cola 600ml', categoryId: 'cat_bebidas', brandId: 'br_coca', cost: 2800, price: 4500, stock: 120, minStock: 24, unit: 'pza', favorite: true },
-  { sku: 'COCA-2L', barcode: '7501057530022', name: 'Coca-Cola 2L', description: 'Refresco de cola 2 litros', categoryId: 'cat_bebidas', brandId: 'br_coca', cost: 5800, price: 8500, stock: 60, minStock: 12, unit: 'pza', favorite: true },
-  { sku: 'PEPSI-600', barcode: '7501057530039', name: 'Pepsi 600ml', description: 'Refresco de cola 600ml', categoryId: 'cat_bebidas', brandId: 'br_pepsi', cost: 2500, price: 4200, stock: 80, minStock: 24, unit: 'pza', favorite: false },
-  { sku: 'SPRITE-600', barcode: '7501057530046', name: 'Sprite 600ml', description: 'Refresco de limón 600ml', categoryId: 'cat_bebidas', brandId: 'br_coca', cost: 2800, price: 4500, stock: 8, minStock: 24, unit: 'pza', favorite: false },
-  { sku: 'AGUA-1L', barcode: '7501057530053', name: 'Agua Ciel 1L', description: 'Agua pura 1 litro', categoryId: 'cat_bebidas', brandId: 'br_coca', cost: 1500, price: 3000, stock: 90, minStock: 24, unit: 'pza', favorite: false },
-  { sku: 'LECHE-1L', barcode: '7501057530060', name: 'Leche Colanta Entera 1L', description: 'Leche entera pasteurizada', categoryId: 'cat_lacteos', brandId: 'br_lala', cost: 3200, price: 4800, stock: 40, minStock: 12, unit: 'pza', favorite: true },
-  { sku: 'YOGURT-1K', barcode: '7501057530077', name: 'Yogurt Nestlé 1kg', description: 'Yogurt de fresa', categoryId: 'cat_lacteos', brandId: 'br_nestle', cost: 8500, price: 13500, stock: 25, minStock: 6, unit: 'pza', favorite: false },
-  { sku: 'QUESO-500', barcode: '7501057530084', name: 'Queso Alpina 500g', description: 'Queso sabana rebanado', categoryId: 'cat_lacteos', brandId: 'br_lala', cost: 12000, price: 18500, stock: 15, minStock: 6, unit: 'pza', favorite: false },
-  { sku: 'ARROZ-1K', barcode: '7501057530091', name: 'Arroz Roa 1kg', description: 'Arroz blanco grano largo', categoryId: 'cat_abarrotes', brandId: 'br_nestle', cost: 3200, price: 4800, stock: 50, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'FRIJOL-1K', barcode: '7501057530107', name: 'Frijol Cargamanto 1kg', description: 'Frijol seleccionado', categoryId: 'cat_abarrotes', brandId: 'br_nestle', cost: 4500, price: 7200, stock: 35, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'ACEITE-1L', barcode: '7501057530114', name: 'Aceite Premier 1L', description: 'Aceite vegetal', categoryId: 'cat_abarrotes', brandId: 'br_unilever', cost: 7500, price: 11500, stock: 28, minStock: 10, unit: 'pza', favorite: true },
-  { sku: 'AZUCAR-1K', barcode: '7501057530121', name: 'Azúcar Incauca 1kg', description: 'Azúcar refinada', categoryId: 'cat_abarrotes', brandId: 'br_nestle', cost: 3500, price: 5200, stock: 45, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'PAPAS-SAB', barcode: '7501057530138', name: 'Papas Margarita 45g', description: 'Papas fritas clásicas', categoryId: 'cat_snacks', brandId: 'br_sabritas', cost: 2200, price: 3500, stock: 100, minStock: 24, unit: 'pza', favorite: true },
-  { sku: 'DORITOS', barcode: '7501057530145', name: 'Doritos Nacho 65g', description: 'Totopos de nacho', categoryId: 'cat_snacks', brandId: 'br_sabritas', cost: 2800, price: 4500, stock: 70, minStock: 24, unit: 'pza', favorite: false },
-  { sku: 'GALLETAS', barcode: '7501057530152', name: 'Galletas Festival', description: 'Galletas de chocolate', categoryId: 'cat_snacks', brandId: 'br_gamesa', cost: 1800, price: 3000, stock: 60, minStock: 24, unit: 'pza', favorite: false },
-  { sku: 'TORTILLAS', barcode: '7501057530169', name: 'Tortillas Bimbo 1kg', description: 'Tortillas de maíz', categoryId: 'cat_abarrotes', brandId: 'br_bimbo', cost: 2500, price: 4000, stock: 5, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'PAN-BIMBO', barcode: '7501057530176', name: 'Pan Bimbo Grande', description: 'Pan blanco rebanado', categoryId: 'cat_abarrotes', brandId: 'br_bimbo', cost: 5500, price: 8500, stock: 20, minStock: 8, unit: 'pza', favorite: false },
-  { sku: 'JABON', barcode: '7501057530183', name: 'Jabón Rey 250g', description: 'Jabón de lavandería', categoryId: 'cat_limpieza', brandId: 'br_p&g', cost: 2800, price: 4500, stock: 55, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'CLOROX-1L', barcode: '7501057530190', name: 'Clorox 1L', description: 'Cloro concentrado', categoryId: 'cat_limpieza', brandId: 'br_p&g', cost: 3200, price: 5000, stock: 30, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'PASTA-DENT', barcode: '7501057530206', name: 'Pasta Dental Colgate', description: 'Pasta dental 100ml', categoryId: 'cat_cuidado', brandId: 'br_colgate', cost: 4500, price: 7500, stock: 40, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'SHAMPOO', barcode: '7501057530213', name: 'Shampoo Savital 400ml', description: 'Shampoo hidratante', categoryId: 'cat_cuidado', brandId: 'br_unilever', cost: 8500, price: 14000, stock: 25, minStock: 8, unit: 'pza', favorite: false },
-  { sku: 'JABON-TOALLA', barcode: '7501057530220', name: 'Jabón Palmolive', description: 'Jabón de tocador 150g', categoryId: 'cat_cuidado', brandId: 'br_colgate', cost: 2200, price: 3800, stock: 48, minStock: 12, unit: 'pza', favorite: false },
-  { sku: 'PAPEL-HIG', barcode: '7501057530237', name: 'Papel Higiénico Familia', description: 'Paquete 4 rollos', categoryId: 'cat_limpieza', brandId: 'br_p&g', cost: 5500, price: 9200, stock: 32, minStock: 10, unit: 'pza', favorite: false },
+const products: Product[] = [
+  { id: 'prod_015', sku: 'L', barcode: '7706303714097', name: 'LAVAPLATOS LIMÓN', description: 'LAVAPLATOS LIMÓN 500ml', categoryId: 'cat_limpieza', brandId: 'brand-1785344683802', cost: 1500, price: 2500, stock: 20, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T17:04:51.549Z' },
+  { id: 'prod_002', sku: 'CAF-INS', barcode: '607766665865', name: 'CAFÉ INSTANTÁNEO', description: 'CAFÉ INSTANTÁNEO 320g', categoryId: 'cat_abarrotes', brandId: 'brand_member_s_selection', cost: 20000, price: 35000, stock: 35, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:02:33.782Z' },
+  { id: 'prod_001', sku: 'ALI-VIN-ESP-ACE', barcode: '7701008626997', name: 'ACEITE DE OLIVA', description: 'Aceite de oliva 500ml', categoryId: 'cat_abarrotes', brandId: 'brand_medalla_de_oro', cost: 3500, price: 5000, stock: 19, minStock: 5, unit: 'pza', active: true, favorite: true, createdAt: '2026-07-29T15:54:39.429Z' },
+  { id: 'prod_004', sku: 'SAL-MAR', barcode: '7703812411646', name: 'SAL MARINA', description: 'SAL MARINA 500g', categoryId: 'cat_abarrotes', brandId: 'brand_refisal', cost: 1500, price: 2600, stock: 35, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:06:55.430Z' },
+  { id: 'prod_006', sku: 'MIE-AVE', barcode: '7700304110445', name: 'MIEL DE AVEJAS', description: 'MIEL DE AVEJAS 350g', categoryId: 'cat_abarrotes', brandId: 'brand_meel', cost: 2500, price: 4000, stock: 17, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:11:11.035Z' },
+  { id: 'prod_005', sku: 'PAS-TOM', barcode: '9107291262504', name: 'PASTA DE TOMATE', description: 'PASTA DE TOMATE 250g', categoryId: 'cat_abarrotes', brandId: 'brand_al_fresco', cost: 5000, price: 8000, stock: 28, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:08:56.637Z' },
+  { id: 'prod_007', sku: 'DET-LIQ', barcode: '7700304587636', name: 'DETERGENTE LÍQUIDO', description: 'DETERGENTE LÍQUIDO 3L', categoryId: 'cat_limpieza', brandId: 'brand_bonaropa', cost: 6000, price: 10000, stock: 20, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:19:12.717Z' },
+  { id: 'prod_008', sku: 'SUA-ROP', barcode: '7702191522066', name: 'SUAVIZANTE PARA ROPA', description: 'SUAVIZANTE PARA ROPA 1,3L', categoryId: 'cat_limpieza', brandId: 'brand_aromatel', cost: 5000, price: 8900, stock: 22, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:21:46.244Z' },
+  { id: 'prod_009', sku: 'BAY-MAT-CUC', barcode: '7501032926069', name: 'BAYGON MATA CUCARACHAS', description: 'BAYGON MATA CUCARACHAS Y CHIRIPAS 241g', categoryId: 'cat_limpieza', brandId: 'brand_baygon', cost: 11000, price: 18000, stock: 25, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:24:14.974Z' },
+  { id: 'prod_010', sku: 'SHA-ANT-CRE', barcode: '7702354961411', name: 'SHAMPOO ANTICAÍDA Y CRECIMIENTO', description: 'SHAMPOO ANTICAÍDA Y CRECIMIENTO 500ml', categoryId: 'cat_cuidado', brandId: 'brand_alma_de_romero', cost: 9000, price: 13000, stock: 18, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:27:44.988Z' },
+  { id: 'prod_011', sku: 'GEL-EGO', barcode: '5707406653117', name: 'GEL EGO', description: 'GEL EGO 200ml', categoryId: 'cat_cuidado', brandId: 'brand_ego', cost: 5000, price: 8000, stock: 19, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:29:24.721Z' },
+  { id: 'prod_012', sku: 'CRE-DEN', barcode: '7891150083899', name: 'CREMA DENTAL', description: 'CREMA DENTAL 80g', categoryId: 'cat_cuidado', brandId: 'br_colgate', cost: 10000, price: 15000, stock: 30, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:30:55.843Z' },
+  { id: 'prod_014', sku: 'HAR-MAI-BLA', barcode: '7702084137520', name: 'HARINA DE  MAÍZ BLANCO', description: 'HARINA DE  MAÍZ BLANCO 250g', categoryId: 'cat_abarrotes', brandId: 'brand_pan', cost: 1500, price: 3000, stock: 25, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:35:45.851Z' },
+  { id: 'prod_003', sku: 'CAF-LIO', barcode: '7702032119639', name: 'CAFÉ LIOFILIZADO', description: 'CAFÉ INSTANTÁNEO LIOFILIZADO 170g', categoryId: 'cat_abarrotes', brandId: 'brand_colcafe', cost: 15000, price: 25000, stock: 21, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:05:10.634Z' },
+  { id: 'prod_013', sku: 'ARR-PAR', barcode: '7702231300036', name: 'ARROZ PARBORIZADO', description: 'ARROZ PARBORIZADO 3000G', categoryId: 'cat_abarrotes', brandId: 'brand_dona_pepa', cost: 18000, price: 31500, stock: 25, minStock: 5, unit: 'pza', active: true, favorite: false, createdAt: '2026-07-29T16:34:10.898Z' },
 ];
-
-/** Arreglo final de productos instanciados con ID */
-const products: Product[] = productSeeds.map((p, i) => ({
-  ...p,
-  id: `prod_${String(i + 1).padStart(3, '0')}`,
-  active: true,
-  createdAt: daysBack(30 - i),
-}));
 
 /** Clientes iniciales */
 const customers = [
@@ -147,12 +140,12 @@ const sales: Sale[] = [
   buildSale(5, 14, [{ product: products[13], qty: 2 }, { product: products[14], qty: 1 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(4, 9, [{ product: products[0], qty: 5 }, { product: products[2], qty: 3 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(4, 13, [{ product: products[10], qty: 1 }, { product: products[9], qty: 2 }], 'tarjeta', 2, 'user_cajero', 'Carlos Vendedor', saleSeq++),
-  buildSale(3, 10, [{ product: products[16], qty: 2 }, { product: products[18], qty: 1 }], 'efectivo', 3, 'user_cajero', 'Carlos Vendedor', saleSeq++),
+  buildSale(3, 10, [{ product: products[3], qty: 2 }, { product: products[7], qty: 1 }], 'efectivo', 3, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(3, 16, [{ product: products[6], qty: 1 }, { product: products[7], qty: 1 }], 'credito', 1, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(2, 9, [{ product: products[0], qty: 3 }, { product: products[12], qty: 2 }, { product: products[13], qty: 1 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
-  buildSale(2, 12, [{ product: products[1], qty: 2 }, { product: products[15], qty: 1 }], 'efectivo', 4, 'user_cajero', 'Carlos Vendedor', saleSeq++),
+  buildSale(2, 12, [{ product: products[1], qty: 2 }, { product: products[11], qty: 1 }], 'efectivo', 4, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(1, 10, [{ product: products[5], qty: 1 }, { product: products[4], qty: 2 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
-  buildSale(1, 11, [{ product: products[19], qty: 1 }, { product: products[20], qty: 1 }], 'tarjeta', 0, 'user_cajero', 'Carlos Vendedor', saleSeq++),
+  buildSale(1, 11, [{ product: products[9], qty: 1 }, { product: products[10], qty: 1 }], 'tarjeta', 0, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(1, 15, [{ product: products[0], qty: 4 }, { product: products[12], qty: 3 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(0, 9, [{ product: products[1], qty: 1 }, { product: products[8], qty: 1 }], 'efectivo', null, 'user_cajero', 'Carlos Vendedor', saleSeq++),
   buildSale(0, 10, [{ product: products[0], qty: 2 }, { product: products[13], qty: 2 }], 'efectivo', 2, 'user_cajero', 'Carlos Vendedor', saleSeq++),
@@ -164,47 +157,44 @@ const sales: Sale[] = [
 const purchases: Purchase[] = [
   {
     id: generateId('pur'),
-    reference: 'C-2025-00001',
+    reference: 'C-2026-00001',
     supplierId: 'sup_002',
-    supplierName: 'Coca-Cola FEMSA',
+    supplierName: 'Distribuidora de Alimentos',
     invoiceNumber: 'FAC-001',
     items: [
-      { productId: 'prod_001', productName: 'Coca-Cola 600ml', quantity: 120, cost: 8, subtotal: 960 },
-      { productId: 'prod_002', productName: 'Coca-Cola 2L', quantity: 60, cost: 18, subtotal: 1080 },
-      { productId: 'prod_004', productName: 'Sprite 600ml', quantity: 48, cost: 8, subtotal: 384 },
-      { productId: 'prod_005', productName: 'Agua Ciel 1L', quantity: 90, cost: 5, subtotal: 450 },
+      { productId: 'prod_001', productName: 'ACEITE DE OLIVA', quantity: 10, cost: 3500, subtotal: 35000 },
+      { productId: 'prod_002', productName: 'CAFÉ INSTANTÁNEO', quantity: 15, cost: 20000, subtotal: 300000 },
+      { productId: 'prod_004', productName: 'SAL MARINA', quantity: 20, cost: 1500, subtotal: 30000 },
     ],
-    total: 2874,
+    total: 365000,
     status: 'recibida',
     createdAt: daysBack(7),
   },
   {
     id: generateId('pur'),
-    reference: 'C-2025-00002',
+    reference: 'C-2026-00002',
     supplierId: 'sup_003',
-    supplierName: 'Grupo Bimbo',
+    supplierName: 'Productos de Limpieza S.A.',
     invoiceNumber: 'FAC-002',
     items: [
-      { productId: 'prod_016', productName: 'Tortillas Bimbo 1kg', quantity: 48, cost: 12, subtotal: 576 },
-      { productId: 'prod_017', productName: 'Pan Bimbo Grande', quantity: 20, cost: 25, subtotal: 500 },
+      { productId: 'prod_007', productName: 'DETERGENTE LÍQUIDO', quantity: 15, cost: 6000, subtotal: 90000 },
+      { productId: 'prod_008', productName: 'SUAVIZANTE PARA ROPA', quantity: 12, cost: 5000, subtotal: 60000 },
     ],
-    total: 1076,
+    total: 150000,
     status: 'recibida',
     createdAt: daysBack(5),
   },
   {
     id: generateId('pur'),
-    reference: 'C-2025-00003',
+    reference: 'C-2026-00003',
     supplierId: 'sup_004',
-    supplierName: 'Nestlé México',
+    supplierName: 'Importaciones y Cuidado Personal',
     invoiceNumber: 'FAC-003',
     items: [
-      { productId: 'prod_007', productName: 'Yogurt Nestlé 1kg', quantity: 25, cost: 35, subtotal: 875 },
-      { productId: 'prod_009', productName: 'Arroz Verde Valle 1kg', quantity: 50, cost: 22, subtotal: 1100 },
-      { productId: 'prod_010', productName: 'Frijol Negro 1kg', quantity: 35, cost: 28, subtotal: 980 },
-      { productId: 'prod_012', productName: 'Azúcar Zulka 1kg', quantity: 45, cost: 18, subtotal: 810 },
+      { productId: 'prod_010', productName: 'SHAMPOO ANTICAÍDA Y CRECIMIENTO', quantity: 10, cost: 9000, subtotal: 90000 },
+      { productId: 'prod_012', productName: 'CREMA DENTAL', quantity: 20, cost: 10000, subtotal: 200000 },
     ],
-    total: 3765,
+    total: 290000,
     status: 'pendiente',
     createdAt: daysBack(2),
   },
@@ -230,25 +220,94 @@ const cashSessions: CashSession[] = [
   },
 ];
 
-/** Configuración por defecto de la empresa */
+/** Configuración por defecto de la tienda cliente */
 const settings = {
-  name: 'Supermercado StoreFlow',
-  legalName: 'StoreFlow Colombia S.A.S.',
+  name: 'Minimarket Don Pedro',
+  legalName: 'Don Pedro Abarrotes & Comercio S.A.S.',
   taxId: '901.234.567-8',
   address: 'Calle 100 # 15-20, Bogotá, Colombia',
   phone: '+57 601 555 1234',
-  email: 'contacto@storeflow.co',
+  email: 'contacto@donpedromarket.com',
   currency: 'COP',
   currencySymbol: '$',
   taxRate: 19,
-  logoText: 'StoreFlow',
+  logoText: 'Don Pedro',
   theme: 'light' as const,
 };
 
 /** Usuarios de demostración */
 const users = [
-  { id: 'user_super', name: 'Sofía Supervisor', email: 'supervisor@storeflow.com', password: 'super123', role: 'supervisor' as const, active: true, createdAt: daysBack(28) },
-  { id: 'user_cajero', name: 'Carlos Vendedor', email: 'cajero@storeflow.com', password: 'cajero123', role: 'cajero' as const, active: true, createdAt: daysBack(25) },
+  { id: 'user_super', name: 'Sofía Supervisor', email: 'supervisor@optimapos.com', password: 'super123', role: 'supervisor' as const, active: true, createdAt: daysBack(28) },
+  { id: 'user_cajero', name: 'Carlos Vendedor', email: 'cajero@optimapos.com', password: 'cajero123', role: 'cajero' as const, active: true, createdAt: daysBack(25) },
+];
+
+/** Promociones de prueba iniciales */
+const promotions: Promotion[] = [
+  {
+    id: 'promo_2x1_coca',
+    name: '2x1 en Coca-Cola 600ml',
+    type: 'buy_x_get_y',
+    target: 'product',
+    targetId: 'prod_001',
+    value: 2, // Compra 2, el segundo es gratis (2x1)
+    active: true,
+    usageCount: 14,
+    createdAt: daysBack(10),
+  },
+  {
+    id: 'promo_15_lacteos',
+    name: '15% de Descuento en Lácteos',
+    type: 'percentage',
+    target: 'category',
+    targetId: 'cat_lacteos',
+    value: 15,
+    active: true,
+    usageCount: 8,
+    createdAt: daysBack(5),
+  },
+  {
+    id: 'promo_cupon_bienvenida',
+    name: 'Cupón Bienvenida -$5.000',
+    code: 'BIENVENIDA5K',
+    type: 'fixed',
+    target: 'all',
+    value: 5000,
+    minPurchaseAmount: 30000,
+    requiresRegisteredCustomer: true,
+    maxRedemptionsPerCustomer: 3,
+    active: true,
+    usageCount: 3,
+    createdAt: daysBack(3),
+  },
+];
+
+const priceCostLogs: PriceCostAuditLog[] = [
+  {
+    id: generateId('pclog'),
+    productId: 'prod_cocacola_600',
+    productName: 'Coca-Cola 600ml',
+    sku: 'BEB-CC-600',
+    oldPrice: 4000,
+    newPrice: 4500,
+    oldCost: 2800,
+    newCost: 3100,
+    userId: 'user_admin',
+    userName: 'Luis Administrador',
+    createdAt: daysBack(2),
+  },
+  {
+    id: generateId('pclog'),
+    productId: 'prod_leche_alpina',
+    productName: 'Leche Entera Alpina 1L',
+    sku: 'LAC-LE-1L',
+    oldPrice: 4800,
+    newPrice: 5200,
+    oldCost: 3600,
+    newCost: 3900,
+    userId: 'user_admin',
+    userName: 'Luis Administrador',
+    createdAt: daysBack(1),
+  },
 ];
 
 /** Exportación del objeto completo de la base de datos de semilla */
@@ -256,13 +315,15 @@ export const seedDatabase: AppDatabase = {
   users,
   categories,
   brands,
-  products: [],
+  products,
   customers,
   suppliers,
   purchases: [],
   sales: [],
   cashSessions: [],
   adjustments: [],
+  promotions,
+  priceCostLogs,
   settings,
   logs: [
     { id: generateId('log'), action: 'system', detail: 'Catálogo e historial restablecido a estado limpio', userId: 'user_super', userName: 'Sofía Supervisor', createdAt: new Date().toISOString() },

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ShoppingCart, Package, Users, Truck, Wallet,
-  BarChart3, Settings, Receipt, Boxes, LogOut, X, Shield,
+  BarChart3, Settings, Receipt, Boxes, LogOut, X, Shield, Tag,
 } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { canAccessModule, roleLabels, type ModuleKey } from '@/controllers/permissions';
@@ -22,6 +22,7 @@ const allNavItems = [
   { to: '/app/suppliers', label: 'Proveedores', icon: Truck, module: 'suppliers' as ModuleKey },
   { to: '/app/cash', label: 'Caja', icon: Wallet, module: 'cash' as ModuleKey },
   { to: '/app/reports', label: 'Reportes', icon: BarChart3, module: 'reports' as ModuleKey },
+  { to: '/app/promotions', label: 'Promociones', icon: Tag, module: 'promotions' as ModuleKey },
   { to: '/app/logs', label: 'Bitácora', icon: Shield, module: 'logs' as ModuleKey },
   { to: '/app/settings', label: 'Configuración', icon: Settings, module: 'settings' as ModuleKey },
 ];
@@ -37,7 +38,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     navigate('/login');
   };
 
-  const storeName = db.settings.name || 'StoreFlow';
+  const storeName = db.settings.name || 'Mi Tienda';
 
   return (
     <>
@@ -114,6 +115,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             >
               <LogOut className="h-4 w-4" />
             </button>
+          </div>
+          <div className="pt-2 text-center text-[10px] text-white/30 font-mono tracking-wider">
+            Powered by Optima POS v2.0
           </div>
         </div>
       </aside>

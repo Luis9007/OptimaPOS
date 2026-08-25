@@ -13,7 +13,7 @@
  */
 
 import { useCallback } from 'react';
-import type { AppDatabase, User, Product, Category, Brand, InventoryAdjustment, CashMovementType } from '../models/types';
+import type { AppDatabase, User, Product, Category, Brand, InventoryAdjustment, CashMovementType, PriceCostAuditLog } from '../models/types';
 import { generateId } from '../lib/utils';
 import { productService } from '../services/productService';
 
@@ -83,11 +83,40 @@ export function useProductController(
   const upsertProduct = useCallback(
     (p: Product) => {
       let isNew = false;
+      let oldProduct: Product | undefined;
+
       setDb((prev) => {
-        const exists = prev.products.some((x) => x.id === p.id);
-        isNew = !exists;
-        const products = exists ? prev.products.map((x) => (x.id === p.id ? p : x)) : [...prev.products, p];
-        return { ...prev, products };
+        oldProduct = prev.products.find((x) => x.id === p.id);
+        isNew = !oldProduct;
+        const products = oldProduct
+          ? prev.products.map((x) => (x.id === p.id ? p : x))
+          : [...prev.products, p];
+
+        let priceCostLogs = prev.priceCostLogs || [];
+
+        // Generar entrada de auditoría de cambio de precio/costo si fue modificado
+        if (
+          oldProduct &&
+          (oldProduct.price !== p.price || oldProduct.cost !== p.cost)
+        ) {
+          const auditEntry: PriceCostAuditLog = {
+            id: generateId('pclog'),
+            productId: p.id,
+            productName: p.name,
+            sku: p.sku || 'S/N',
+            oldPrice: oldProduct.price,
+            newPrice: p.price,
+            oldCost: oldProduct.cost,
+            newCost: p.cost,
+            userId: currentUser?.id || '',
+            userName: currentUser?.name || 'Sistema',
+            createdAt: new Date().toISOString(),
+          };
+
+          priceCostLogs = [auditEntry, ...priceCostLogs];
+        }
+
+        return { ...prev, products, priceCostLogs };
       });
 
       if (isNew) {
@@ -98,12 +127,19 @@ export function useProductController(
           price: p.price,
           stock: p.stock,
         });
+        addLog('Catálogo de Productos', `Producto "${p.name}" (SKU: ${p.sku || 'S/N'}) registrado`);
+      } else if (oldProduct && (oldProduct.price !== p.price || oldProduct.cost !== p.cost)) {
+        addLog(
+          'Auditoría de Precio/Costo',
+          `Modificación en "${p.name}": Precio de $${oldProduct.price.toLocaleString()} a $${p.price.toLocaleString()} | Costo de $${oldProduct.cost.toLocaleString()} a $${p.cost.toLocaleString()}`
+        );
+      } else {
+        addLog('Catálogo de Productos', `Producto "${p.name}" (SKU: ${p.sku || 'S/N'}) actualizado`);
       }
 
-      addLog('Catálogo de Productos', `Producto "${p.name}" (SKU: ${p.sku || 'S/N'}) ${isNew ? 'registrado' : 'actualizado'}`);
       productService.upsertProduct(p).catch(console.error);
     },
-    [setDb, logSessionMovement, addLog]
+    [setDb, currentUser, logSessionMovement, addLog]
   );
 
   /**

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Receipt, TrendingUp,
-  ChevronDown, ChevronUp, User, DollarSign, Package, Truck, Layers, FileText, Calendar, CreditCard, UserCheck,
+  ChevronDown, ChevronUp, User, DollarSign, Package, Truck, Layers, FileText, Calendar, UserCheck, Eye, Printer, CheckCircle2, AlertTriangle, XCircle,
 } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
@@ -15,7 +15,7 @@ import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
 import { formatCurrency, formatDateTime, cn } from '@/lib/utils';
-import type { CashMovement, CashSession, CashMovementType } from '@/models/types';
+import type { CashSession, CashMovementType } from '@/models/types';
 
 export function CashPage() {
   const { db, currentUser, activeCashSession, openCash, closeCash, addCashMovement } = useStore();
@@ -35,6 +35,9 @@ export function CashPage() {
   const [movementConcept, setMovementConcept] = useState('');
   const [expandedMovIds, setExpandedMovIds] = useState<Record<string, boolean>>({});
 
+  // Cierre de caja pasado seleccionado para auditoría
+  const [selectedPastSession, setSelectedPastSession] = useState<CashSession | null>(null);
+
   const sessionMovements = useMemo(() => activeCashSession?.movements ?? [], [activeCashSession]);
 
   const cashSales = sessionMovements.filter((m) => m.type === 'venta' && m.amount > 0).reduce((s, m) => s + m.amount, 0);
@@ -42,6 +45,29 @@ export function CashPage() {
   const ingresos = sessionMovements.filter((m) => m.type === 'ingreso').reduce((s, m) => s + m.amount, 0);
   const egresos = sessionMovements.filter((m) => m.type === 'egreso').reduce((s, m) => s + m.amount, 0);
   const expectedBalance = (activeCashSession?.openingAmount ?? 0) + cashSales + cashAbonos + ingresos - egresos;
+
+  const pastSessionCalculations = useMemo(() => {
+    if (!selectedPastSession) return null;
+    const movs = selectedPastSession.movements || [];
+    const sales = movs.filter((m) => m.type === 'venta' && m.amount > 0).reduce((acc, m) => acc + m.amount, 0);
+    const abonos = movs.filter((m) => m.type === 'abono' && m.amount > 0).reduce((acc, m) => acc + m.amount, 0);
+    const ingresos = movs.filter((m) => m.type === 'ingreso').reduce((acc, m) => acc + m.amount, 0);
+    const egresos = movs.filter((m) => m.type === 'egreso').reduce((acc, m) => acc + m.amount, 0);
+    const expected = selectedPastSession.openingAmount + sales + abonos + ingresos - egresos;
+    const actual = selectedPastSession.closingAmount !== null ? selectedPastSession.closingAmount : expected;
+    const diff = selectedPastSession.closingAmount !== null ? actual - expected : 0;
+
+    return {
+      sales,
+      abonos,
+      ingresos,
+      egresos,
+      expected,
+      actual,
+      diff,
+      movs,
+    };
+  }, [selectedPastSession]);
 
   const toggleExpand = (id: string) => {
     setExpandedMovIds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -89,12 +115,28 @@ export function CashPage() {
   };
 
   const sessionColumns: Column<CashSession>[] = [
-    { key: 'openedAt', header: 'Apertura', render: (s) => <span className="text-muted">{formatDateTime(s.openedAt)}</span> },
-    { key: 'openingAmount', header: 'Monto inicial', align: 'right', render: (s) => <span className="text-text">{formatCurrency(s.openingAmount, sym)}</span> },
-    { key: 'closingAmount', header: 'Monto cierre', align: 'right', render: (s) => s.closingAmount !== null ? <span className="text-text">{formatCurrency(s.closingAmount, sym)}</span> : <span className="text-muted">—</span> },
+    { key: 'openedAt', header: 'Apertura', render: (s) => <span className="text-muted font-medium">{formatDateTime(s.openedAt)}</span> },
+    { key: 'openingAmount', header: 'Monto inicial', align: 'right', render: (s) => <span className="text-text font-semibold">{formatCurrency(s.openingAmount, sym)}</span> },
+    { key: 'closingAmount', header: 'Monto cierre', align: 'right', render: (s) => s.closingAmount !== null ? <span className="text-emerald-500 font-bold">{formatCurrency(s.closingAmount, sym)}</span> : <span className="text-muted">—</span> },
     { key: 'status', header: 'Estado', align: 'center', render: (s) => <Badge variant={s.status === 'abierta' ? 'success' : 'default'}>{s.status}</Badge> },
-    { key: 'userName', header: 'Usuario', render: (s) => <span className="text-muted">{s.userName}</span> },
+    { key: 'userName', header: 'Responsable', render: (s) => <span className="text-muted">{s.userName}</span> },
     { key: 'closedAt', header: 'Cierre', render: (s) => s.closedAt ? <span className="text-muted">{formatDateTime(s.closedAt)}</span> : <span className="text-muted">—</span> },
+    {
+      key: 'actions',
+      header: 'Acciones',
+      align: 'center',
+      render: (s) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setSelectedPastSession(s)}
+          className="gap-1 text-xs h-7 px-2.5"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          Ver Arqueo
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -162,7 +204,7 @@ export function CashPage() {
           <Card className="mb-5">
             <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border">
               <div>
-                <CardTitle className="text-base">Movimientos y Auditoría de la Sesión</CardTitle>
+                <CardTitle className="text-base">Movimientos y Auditoría de la Sesión Activa</CardTitle>
                 <p className="text-xs text-muted mt-0.5">Toca cualquier registro para ver el desglose y detalle completo de la acción</p>
               </div>
               <Badge variant="primary">{sessionMovements.length} registro{sessionMovements.length !== 1 ? 's' : ''}</Badge>
@@ -182,7 +224,6 @@ export function CashPage() {
                         key={mov.id}
                         className="rounded-xl border border-border bg-surface overflow-hidden transition-all shadow-sm"
                       >
-                        {/* Header Accordion Toggle */}
                         <button
                           type="button"
                           onClick={() => toggleExpand(mov.id)}
@@ -226,7 +267,6 @@ export function CashPage() {
                           </div>
                         </button>
 
-                        {/* Collapsible Details */}
                         <AnimatePresence>
                           {isExpanded && (
                             <motion.div
@@ -236,10 +276,8 @@ export function CashPage() {
                               transition={{ duration: 0.2 }}
                               className="border-t border-border p-4 bg-surface"
                             >
-                              {/* If Details Object Available */}
                               {mov.details ? (
                                 <div className="space-y-3">
-                                  {/* Sale Details */}
                                   {mov.type === 'venta' && (
                                     <div className="space-y-3 text-xs">
                                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg bg-surface-2 border border-border">
@@ -276,7 +314,6 @@ export function CashPage() {
                                     </div>
                                   )}
 
-                                  {/* Customer Details */}
                                   {mov.type === 'cliente' && (
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs p-3 rounded-lg bg-surface-2 border border-border">
                                       <div><span className="text-muted">Nombre:</span> <strong className="text-text block">{mov.details.name}</strong></div>
@@ -286,55 +323,12 @@ export function CashPage() {
                                     </div>
                                   )}
 
-                                  {/* Abono Details */}
                                   {mov.type === 'abono' && (
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs p-3 rounded-lg bg-surface-2 border border-border">
                                       <div><span className="text-muted">Cliente:</span> <strong className="text-text block">{mov.details.customerName}</strong></div>
                                       <div><span className="text-muted">Monto Abonado:</span> <strong className="text-success block">{formatCurrency(mov.details.amount, sym)}</strong></div>
                                       <div><span className="text-muted">Forma de Pago:</span> <span className="text-text capitalize block">{mov.details.paymentMethod}</span></div>
                                       <div><span className="text-muted">Nuevo Saldo:</span> <span className="text-text font-bold block">{formatCurrency(mov.details.newBalance, sym)}</span></div>
-                                      {mov.details.notes && (
-                                        <div className="col-span-2 sm:col-span-4 mt-1 pt-1 border-t border-border/50 text-muted">
-                                          Nota: {mov.details.notes}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Inventory Details */}
-                                  {mov.type === 'inventario' && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs p-3 rounded-lg bg-surface-2 border border-border">
-                                      <div><span className="text-muted">Producto:</span> <strong className="text-text block">{mov.details.productName}</strong></div>
-                                      <div><span className="text-muted">Tipo Ajuste:</span> <span className="text-text uppercase font-semibold block">{mov.details.type}</span></div>
-                                      <div><span className="text-muted">Stock Previo:</span> <span className="text-text block">{mov.details.previousStock} pzas</span></div>
-                                      <div><span className="text-muted">Nuevo Stock:</span> <strong className="text-primary block">{mov.details.newStock} pzas</strong></div>
-                                      {mov.details.reason && (
-                                        <div className="col-span-2 sm:col-span-4 mt-1 pt-1 border-t border-border/50 text-muted">
-                                          Motivo: {mov.details.reason}
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-
-                                  {/* Product Creation Details */}
-                                  {mov.type === 'producto' && (
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs p-3 rounded-lg bg-surface-2 border border-border">
-                                      <div><span className="text-muted">Producto:</span> <strong className="text-text block">{mov.details.name}</strong></div>
-                                      <div><span className="text-muted">SKU:</span> <span className="text-text block">{mov.details.sku}</span></div>
-                                      <div><span className="text-muted">Precio Venta:</span> <strong className="text-primary block">{formatCurrency(mov.details.price, sym)}</strong></div>
-                                      <div><span className="text-muted">Stock Inicial:</span> <span className="text-text block">{mov.details.stock} pzas</span></div>
-                                    </div>
-                                  )}
-
-                                  {/* Purchase Details */}
-                                  {mov.type === 'compra' && (
-                                    <div className="space-y-2 text-xs">
-                                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2.5 rounded-lg bg-surface-2 border border-border">
-                                        <div><span className="text-muted">Folio Compra:</span> <strong className="text-text">{mov.details.reference}</strong></div>
-                                        <div><span className="text-muted">Proveedor:</span> <strong className="text-text">{mov.details.supplierName}</strong></div>
-                                        <div><span className="text-muted">No. Factura:</span> <span className="text-text">{mov.details.invoiceNumber || '—'}</span></div>
-                                        <div><span className="text-muted">Total Compra:</span> <strong className="text-primary font-bold">{formatCurrency(mov.details.total, sym)}</strong></div>
-                                      </div>
                                     </div>
                                   )}
                                 </div>
@@ -364,9 +358,15 @@ export function CashPage() {
         </Card>
       )}
 
-      {/* History */}
+      {/* Tabla del Historial de Sesiones */}
       <Card className="mt-5">
-        <CardHeader><CardTitle className="text-base">Historial de sesiones de caja</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between pb-2 border-b border-border">
+          <div>
+            <CardTitle className="text-base">Historial de sesiones de caja</CardTitle>
+            <p className="text-xs text-muted mt-0.5">Haz clic en "Ver Arqueo" en cualquier sesión para auditar la diferencia de saldo e historial de eventos</p>
+          </div>
+          <Badge variant="primary">{db.cashSessions.length} sesion{db.cashSessions.length !== 1 ? 'es' : ''}</Badge>
+        </CardHeader>
         <CardContent className="p-0">
           {db.cashSessions.length === 0 ? (
             <EmptyState title="Sin historial de sesiones" />
@@ -375,6 +375,152 @@ export function CashPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Modal Modal Arqueo y Cierre Pasado */}
+      <Dialog
+        open={Boolean(selectedPastSession)}
+        onClose={() => setSelectedPastSession(null)}
+        title={`Reporte de Arqueo y Cierre de Caja (Sesión #${selectedPastSession?.id.slice(-6).toUpperCase() || ''})`}
+        size="lg"
+        footer={
+          <div className="flex items-center justify-between w-full">
+            <Button variant="outline" onClick={() => window.print()} className="gap-2">
+              <Printer className="h-4 w-4" /> Imprimir Comprobante de Arqueo
+            </Button>
+            <Button onClick={() => setSelectedPastSession(null)}>
+              Cerrar Vista
+            </Button>
+          </div>
+        }
+      >
+        {selectedPastSession && pastSessionCalculations && (
+          <div className="space-y-5 text-text">
+            {/* Header Meta Info */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-surface-2 border border-border text-xs">
+              <div>
+                <span className="text-muted block font-medium">Responsable Turno</span>
+                <span className="font-bold text-text">{selectedPastSession.userName}</span>
+              </div>
+              <div>
+                <span className="text-muted block font-medium">Estado Sesión</span>
+                <Badge variant={selectedPastSession.status === 'abierta' ? 'success' : 'default'} className="mt-0.5">
+                  {selectedPastSession.status.toUpperCase()}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-muted block font-medium">Apertura</span>
+                <span className="font-medium text-text">{formatDateTime(selectedPastSession.openedAt)}</span>
+              </div>
+              <div>
+                <span className="text-muted block font-medium">Cierre</span>
+                <span className="font-medium text-text">
+                  {selectedPastSession.closedAt ? formatDateTime(selectedPastSession.closedAt) : 'Sesión en curso'}
+                </span>
+              </div>
+            </div>
+
+            {/* Financial breakdown stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-xl border border-border bg-surface-2/40">
+                <span className="text-muted block">Monto Inicial</span>
+                <span className="text-sm font-bold text-text">{formatCurrency(selectedPastSession.openingAmount, sym)}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-border bg-surface-2/40">
+                <span className="text-muted block">Ventas Efectivo</span>
+                <span className="text-sm font-bold text-emerald-500">+{formatCurrency(pastSessionCalculations.sales, sym)}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-border bg-surface-2/40">
+                <span className="text-muted block">Abonos Efectivo</span>
+                <span className="text-sm font-bold text-teal-500">+{formatCurrency(pastSessionCalculations.abonos, sym)}</span>
+              </div>
+              <div className="p-3 rounded-xl border border-border bg-surface-2/40">
+                <span className="text-muted block">Ingresos / Egresos</span>
+                <span className="text-sm font-bold text-purple-500">
+                  +{formatCurrency(pastSessionCalculations.ingresos, sym)} / -{formatCurrency(pastSessionCalculations.egresos, sym)}
+                </span>
+              </div>
+            </div>
+
+            {/* Closing Balance Comparison & Discrepancy */}
+            <div className="p-4 rounded-xl border border-border bg-surface-2 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center sm:text-left">
+                <div>
+                  <span className="text-xs text-muted font-medium block">Efectivo Esperado</span>
+                  <span className="font-display font-bold text-lg text-primary">
+                    {formatCurrency(pastSessionCalculations.expected, sym)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted font-medium block">Efectivo Físico Contado</span>
+                  <span className="font-display font-bold text-lg text-text">
+                    {selectedPastSession.closingAmount !== null
+                      ? formatCurrency(selectedPastSession.closingAmount, sym)
+                      : 'Sin cierre'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-muted font-medium block">Diferencia / Descuadre</span>
+                  {selectedPastSession.closingAmount !== null ? (
+                    pastSessionCalculations.diff === 0 ? (
+                      <span className="font-display font-bold text-lg text-emerald-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-4 w-4" /> $0 (Cuadre Exacto)
+                      </span>
+                    ) : pastSessionCalculations.diff > 0 ? (
+                      <span className="font-display font-bold text-lg text-emerald-500 flex items-center gap-1">
+                        <CheckCircle2 className="h-4 w-4" /> +{formatCurrency(pastSessionCalculations.diff, sym)} (Sobrante)
+                      </span>
+                    ) : (
+                      <span className="font-display font-bold text-lg text-rose-500 flex items-center gap-1">
+                        <AlertTriangle className="h-4 w-4" /> {formatCurrency(pastSessionCalculations.diff, sym)} (Faltante)
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-muted text-sm">—</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* List of movements inside selected past session */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
+                Auditoría de Eventos de la Sesión ({pastSessionCalculations.movs.length})
+              </h4>
+              <div className="max-h-60 overflow-y-auto rounded-xl border border-border divide-y divide-border bg-surface text-xs">
+                {pastSessionCalculations.movs.length === 0 ? (
+                  <div className="p-4 text-center text-muted">Sin movimientos registrados durante esta sesión.</div>
+                ) : (
+                  pastSessionCalculations.movs.map((mov) => {
+                    const badge = getMovementTypeBadge(mov.type);
+                    return (
+                      <div key={mov.id} className="p-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold border', badge.color)}>
+                              {badge.label}
+                            </span>
+                            <span className="text-muted text-[11px]">{formatDateTime(mov.createdAt)}</span>
+                          </div>
+                          <p className="font-medium text-text mt-0.5 truncate">{mov.concept}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          {mov.amount > 0 ? (
+                            <span className={cn('font-bold', mov.type === 'egreso' ? 'text-rose-500' : 'text-emerald-500')}>
+                              {mov.type === 'egreso' ? '-' : '+'}{formatCurrency(mov.amount, sym)}
+                            </span>
+                          ) : (
+                            <span className="text-muted">—</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </Dialog>
 
       {/* Open dialog */}
       <Dialog open={showOpen} onClose={() => setShowOpen(false)} title="Abrir caja" size="sm" footer={<><Button variant="outline" onClick={() => setShowOpen(false)}>Cancelar</Button><Button onClick={handleOpen}>Abrir</Button></>}>

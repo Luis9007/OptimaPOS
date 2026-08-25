@@ -64,6 +64,7 @@ export interface Customer {
   email: string;
   address: string;
   balance: number; // Saldo pendiente por pagar (cartera de crédito)
+  welcomeRedemptions?: number; // Conteo de canjes de la promoción de bienvenida
   notes: string;
   createdAt: string;
 }
@@ -100,6 +101,7 @@ export interface Purchase {
   items: PurchaseItem[];
   total: number;
   status: 'pendiente' | 'recibida' | 'cancelada';
+  invoiceFileUrl?: string;
   createdAt: string;
 }
 
@@ -133,6 +135,7 @@ export interface Sale {
   userId: string;
   userName: string;
   status: 'completada' | 'anulada';
+  receiptUrl?: string;
   createdAt: string;
 }
 
@@ -204,6 +207,41 @@ export interface ActivityLog {
   createdAt: string;
 }
 
+/** Promoción o regla de descuento automático */
+export interface Promotion {
+  id: string;
+  name: string;
+  code?: string; // Código de cupón opcional (ej: "BIENVENIDA5K")
+  type: 'percentage' | 'fixed' | 'buy_x_get_y';
+  target: 'all' | 'product' | 'category' | 'brand';
+  targetId?: string;
+  value: number; // Porcentaje, descuento fijo o cantidad requerida para 2x1
+  minPurchaseAmount?: number;
+  startDate?: string;
+  endDate?: string;
+  requiresRegisteredCustomer?: boolean;
+  maxRedemptionsPerCustomer?: number;
+  isWelcomePromo?: boolean;
+  active: boolean;
+  usageCount: number;
+  createdAt: string;
+}
+
+/** Registro de auditoría específico de cambio de precio de venta o costo de compra */
+export interface PriceCostAuditLog {
+  id: string;
+  productId: string;
+  productName: string;
+  sku: string;
+  oldPrice: number;
+  newPrice: number;
+  oldCost: number;
+  newCost: number;
+  userId: string;
+  userName: string;
+  createdAt: string;
+}
+
 /** Objeto contenedor del estado completo de la base de datos de la aplicación */
 export interface AppDatabase {
   users: User[];
@@ -216,6 +254,8 @@ export interface AppDatabase {
   sales: Sale[];
   cashSessions: CashSession[];
   adjustments: InventoryAdjustment[];
+  promotions: Promotion[];
+  priceCostLogs: PriceCostAuditLog[];
   settings: CompanySettings;
   logs: ActivityLog[];
 }
