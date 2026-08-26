@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Building2, Palette, Database, Moon, Sun, RotateCcw, Save, Users, Plus, Edit2, Trash2, UserCheck, UserX, Search, Shield } from 'lucide-react';
+import { Settings, Building2, Palette, Database, Moon, Sun, RotateCcw, Save, Users, Plus, Edit2, Trash2, UserCheck, UserX, Search, Shield, Upload, Image } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { Button } from '@/views/components/ui/Button';
@@ -10,7 +10,7 @@ import { Dialog } from '@/views/components/ui/Dialog';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
 import { cn, generateId } from '@/lib/utils';
-import type { User, Role } from '@/models/types';
+import { storageService } from '@/services/storageService';
 
 export function SettingsPage() {
   const { db, updateSettings, setTheme, resetData, currentUser, upsertUser, deleteUser } = useStore();
@@ -18,6 +18,27 @@ export function SettingsPage() {
 
   const [form, setForm] = useState(db.settings);
   const [showReset, setShowReset] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Archivo muy grande', 'La imagen no debe superar los 5MB');
+      return;
+    }
+
+    try {
+      const url = await storageService.uploadStoreLogo(file);
+      if (url) {
+        setForm((prev) => ({ ...prev, logoUrl: url }));
+        toast.success('Imagen cargada', `Logotipo "${file.name}" procesado. Haz clic en "Guardar Cambios".`);
+      }
+    } catch {
+      toast.error('Error de lectura', 'No se pudo procesar la imagen seleccionada');
+    }
+  };
 
   // User management states
   const [userModalOpen, setUserModalOpen] = useState(false);
@@ -180,10 +201,113 @@ export function SettingsPage() {
           {tab === 'empresa' && (
             <Card>
               <CardHeader className="flex items-center justify-between">
-                <CardTitle>Datos de la empresa</CardTitle>
-                <Button onClick={handleSave}><Save className="h-4 w-4" /> Guardar</Button>
+                <div>
+                  <CardTitle>Datos de la Empresa y Personalización de Marca</CardTitle>
+                  <p className="text-xs text-muted mt-1">Configura la información legal y la imagen gráfica de tu comercio</p>
+                </div>
+                <Button onClick={handleSave}><Save className="h-4 w-4" /> Guardar Cambios</Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-6">
+                {/* Store Logo Section */}
+                <div className="p-4 rounded-2xl bg-surface-2/60 border border-border/80 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-text flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" /> Logotipo Personalizado de la Tienda
+                    </p>
+                    <Badge variant="primary" className="text-[11px]">Carga Multiformato</Badge>
+                  </div>
+                  <p className="text-xs text-muted">
+                    Sube una imagen desde tu equipo o ingresa una URL. Formatos aceptados: <strong>PNG, JPG, JPEG, WEBP, SVG, GIF, ICO, BMP</strong> (Máx. 5MB).
+                  </p>
+                  
+                  {/* Hidden file input */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/png, image/jpeg, image/jpg, image/webp, image/svg+xml, image/gif, image/x-icon, image/bmp, image/*"
+                    onChange={handleLogoFileUpload}
+                    className="hidden"
+                  />
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 pt-1">
+                    <div className="relative group h-20 w-20 rounded-2xl bg-surface border-2 border-dashed border-primary/40 flex items-center justify-center overflow-hidden shadow-sm shrink-0">
+                      {form.logoUrl ? (
+                        <img 
+                          src={form.logoUrl} 
+                          alt="Logo de la Tienda" 
+                          className="w-full h-full object-contain p-1.5" 
+                          onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-primary font-bold text-2xl">
+                          {form.name ? form.name.charAt(0).toUpperCase() : 'T'}
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black/50 text-white opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-xs font-semibold"
+                        title="Cambiar imagen"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+
+                    <div className="flex-1 w-full space-y-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => fileInputRef.current?.click()}
+                          className="gap-2"
+                        >
+                          <Upload className="h-4 w-4 text-primary" /> Subir Imagen desde Equipo
+                        </Button>
+
+                        {form.logoUrl && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => setForm({ ...form, logoUrl: '' })}
+                            className="text-danger hover:text-danger hover:bg-danger/10 text-xs"
+                          >
+                            Quitar Logotipo
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="pt-1">
+                        <Input
+                          label="O ingresa la URL directa de la imagen"
+                          placeholder="https://ejemplo.com/logo-tienda.png"
+                          value={form.logoUrl || ''}
+                          onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-xs pt-1">
+                        <span className="text-muted">Probar demos:</span>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, logoUrl: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?auto=format&fit=crop&w=150&q=80' })}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          [Minimarket]
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setForm({ ...form, logoUrl: 'https://images.unsplash.com/photo-1528698827591-e19ccd7bc23d?auto=format&fit=crop&w=150&q=80' })}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          [Boutique]
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="Nombre comercial" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                   <Input label="Razón social" value={form.legalName} onChange={(e) => setForm({ ...form, legalName: e.target.value })} />

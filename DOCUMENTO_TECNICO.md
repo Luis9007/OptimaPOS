@@ -75,9 +75,11 @@ Los comercios minoristas de pequeño y mediano tamaño enfrentan retos críticos
 - **Motor de Promociones**: Aplicación automática de descuentos por reglas configuradas (`promoEngine.ts`).
 - **Formato Monetario**: `CurrencyInput` en apertura de caja y efectivo recibido con puntuación de miles.
 
-### 4.2 Almacenamiento en Nube — Cloudflare R2 (`storageService.ts`)
+### 4.2 Almacenamiento en Nube & Personalización de Marca — Cloudflare R2 (`storageService.ts`)
 - **Comprobantes Digitales**: Generación y carga automática de comprobantes de ventas, compras y notas de crédito hacia buckets de Cloudflare R2 mediante el cliente S3 SDK.
-- **Visualización Directa**: Enlace "Ver Comprobante Digital" disponible en el historial de reportes.
+- **Logotipos Personalizados de Comercio**: Subida de imágenes de marca en múltiples formatos (`PNG`, `JPG`, `JPEG`, `WEBP`, `SVG`, `GIF`, `ICO`, `BMP`) hacia Cloudflare R2 (`/store-logos/`) con respaldo Data-URL local.
+- **Visualización Dinámica de Marca**: Pantalla de Login con logotipo de la plataforma vs. Menú Lateral (`Sidebar`) y Barra Superior (`Topbar`) con el logotipo propio de la tienda cliente activa.
+- **Manual de Identidad de Marca**: Documento [`MANUAL_IDENTIDAD_MARCA.md`](MANUAL_IDENTIDAD_MARCA.md) oficial con estándares gráficos, colores corporativos y muestras.
 
 ### 4.3 Módulo de Productos y Auditoría de Precios — `ProductsPage.tsx` & `LogsPage.tsx`
 - **CRUD e Inventario**: Control de costo, precio, stock actual y stock mínimo.
@@ -135,6 +137,10 @@ Los comercios minoristas de pequeño y mediano tamaño enfrentan retos críticos
 | Fecha | Cambio | Módulo |
 |---|---|---|
 | Ago 2026 | Rebranding a **Optima POS v2.0** en toda la plataforma | Global |
+| Ago 2026 | Manual de Identidad de Marca oficial (`MANUAL_IDENTIDAD_MARCA.md`) | Raíz del proyecto |
+| Ago 2026 | Sistema de Carga Multiformato de Logotipos con Cloudflare R2 | `SettingsPage.tsx` / `storageService.ts` |
+| Ago 2026 | Visualización Dinámica de Marca (Login vs Tienda Activa en Sidebar/Topbar) | `Sidebar.tsx` / `Topbar.tsx` |
+| Ago 2026 | Regla global `whitespace-nowrap` y ajuste responsivo en botones de modales | `Button.tsx` / `ReportsPage.tsx` |
 | Ago 2026 | Integración de Cloudflare R2 para comprobantes digitales | `storageService.ts` |
 | Ago 2026 | Botón "Ver Comprobante Digital" en historial | `ReportsPage.tsx` |
 | Ago 2026 | Motor de Promociones y Descuentos | `promoEngine.ts` / `PromotionsPage.tsx` |

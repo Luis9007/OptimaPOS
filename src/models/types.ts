@@ -194,6 +194,7 @@ export interface CompanySettings {
   currencySymbol: string;
   taxRate: number;
   logoText: string;
+  logoUrl?: string;
   theme: 'light' | 'dark';
 }
 

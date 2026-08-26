@@ -66,13 +66,17 @@ export function LoginPage() {
         />
 
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
-          <div className="flex items-center gap-3">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-              <span className="font-display font-bold text-white text-xl">O</span>
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/10 backdrop-blur-md shadow-2xl border border-white/20 p-2 flex items-center justify-center shrink-0">
+              <img 
+                src="/logo.png" 
+                alt="Optima POS Logo" 
+                className="w-full h-full object-contain filter drop-shadow-md" 
+              />
             </div>
             <div>
-              <p className="font-display font-bold text-xl">Optima POS</p>
-              <p className="text-xs text-white/60">POS & Gestión de Tiendas</p>
+              <p className="font-display font-bold text-2xl tracking-tight">Optima POS</p>
+              <p className="text-xs text-teal-300 font-semibold tracking-wide">Plataforma Web de Gestión Comercial & POS</p>
             </div>
           </div>
 
@@ -81,17 +85,17 @@ export function LoginPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
-              className="font-display font-bold text-4xl leading-tight"
+              className="font-display font-bold text-3xl sm:text-4xl leading-tight"
             >
-              Gestiona tu tienda con <span className="text-primary font-extrabold">Optima POS</span> y control total.
+              Plataforma web moderna, modular y de alto rendimiento.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="text-white/70 mt-4 text-lg"
+              className="text-white/80 mt-4 text-base leading-relaxed font-normal"
             >
-              Punto de venta, inventario, compras, caja y reportes en una sola plataforma profesional.
+              Diseñada para la gestión comercial integral, Punto de Venta (POS), control de inventarios y auditoría operativa en tiempo real para negocios minoristas y de comercio al detal.
             </motion.p>
 
             <div className="grid grid-cols-3 gap-4 mt-10">
@@ -128,10 +132,17 @@ export function LoginPage() {
         >
           {/* Mobile brand */}
           <div className="flex lg:hidden items-center gap-3 mb-8 justify-center">
-            <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-              <span className="font-display font-bold text-white text-xl">O</span>
+            <div className="h-14 w-14 rounded-2xl bg-surface-2 p-1.5 shadow-lg border border-primary/20 flex items-center justify-center shrink-0">
+              <img 
+                src="/logo.png" 
+                alt="Optima POS Logo" 
+                className="w-full h-full object-contain" 
+              />
             </div>
-            <p className="font-display font-bold text-2xl text-text">Optima POS</p>
+            <div>
+              <p className="font-display font-bold text-2xl text-text">Optima POS</p>
+              <p className="text-[11px] text-primary font-semibold">Gestión Comercial & POS</p>
+            </div>
           </div>
 
           <h2 className="font-display font-bold text-2xl text-text">Iniciar sesión</h2>

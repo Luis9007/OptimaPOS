@@ -51,18 +51,33 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Brand */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-white/5">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg shrink-0">
-              <span className="font-display font-bold text-white text-lg">
-                {storeName.charAt(0).toUpperCase()}
-              </span>
-            </div>
+          <div className="flex items-center gap-3 min-w-0">
+            {db.settings.logoUrl ? (
+              <div className="h-10 w-10 rounded-xl bg-white p-1 shadow-lg shrink-0 border border-white/10 flex items-center justify-center">
+                <img 
+                  src={db.settings.logoUrl} 
+                  alt={storeName} 
+                  className="w-full h-full object-contain" 
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur-md p-1 shadow-lg shrink-0 border border-white/15 flex items-center justify-center">
+                <img 
+                  src="/logo.png" 
+                  alt="Optima POS Logo" 
+                  className="w-full h-full object-contain filter drop-shadow-sm" 
+                />
+              </div>
+            )}
             <div className="min-w-0">
               <p className="font-display font-bold text-white text-sm leading-tight truncate" title={storeName}>
                 {storeName}
               </p>
-              <p className="text-[10px] text-sidebar-fg/60 mt-0.5 truncate">
-                {db.settings.legalName || 'POS & Gestión'}
+              <p className="text-[10px] text-teal-400 font-semibold mt-0.5 truncate">
+                Powered by Optima POS
               </p>
             </div>
           </div>

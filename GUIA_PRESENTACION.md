@@ -46,7 +46,8 @@ Presentar este cuadro de problemas reales:
 ### Características Clave (resumen de alto nivel)
 
 - 🛒 **POS completo** con escáner de código de barras por cámara y vista previa
-- ☁️ **Comprobantes Digitales en la Nube** almacenados en Cloudflare R2
+- ☁️ **Comprobantes Digitales & Logotipos en Nube** almacenados en Cloudflare R2
+- 🎨 **Personalización de Marca & Logotipo de Tienda**: Carga multiformato (`PNG`, `JPG`, `WEBP`, `SVG`) con respaldo R2
 - 📦 **Inventario inteligente** con alertas de stock mínimo y rotación de stock
 - 🏷️ **Motor de Promociones y Descuentos** automáticos por volumen o tipo
 - 📈 **Auditoría de Precios y Costos** (`PriceCostAuditLog`) para trazabilidad

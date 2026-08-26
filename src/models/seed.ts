@@ -232,6 +232,7 @@ const settings = {
   currencySymbol: '$',
   taxRate: 19,
   logoText: 'Don Pedro',
+  logoUrl: '',
   theme: 'light' as const,
 };
 

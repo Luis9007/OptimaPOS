@@ -252,4 +252,33 @@ export const storageService = {
 
     return URL.createObjectURL(file);
   },
+
+  /**
+   * Subida del logotipo personalizado de la tienda a Cloudflare R2 Object Storage
+   */
+  async uploadStoreLogo(file: File): Promise<string> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', 'store-logos');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.url; // Retorna la URL pública de Cloudflare R2 (https://pub-xxxx.r2.dev/store-logos/...)
+      }
+    } catch (e) {
+      console.warn('Falló la subida remota R2, utilizando fallback Data-URL local', e);
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.readAsDataURL(file);
+    });
+  },
 };

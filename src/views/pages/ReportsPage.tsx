@@ -702,25 +702,25 @@ export function ReportsPage() {
         open={!!selectedSale}
         onClose={() => setSelectedSale(null)}
         title={`Detalle de Venta: ${selectedSale?.reference}`}
-        size="md"
+        size="lg"
         footer={
           selectedSale && (
-            <div className="flex items-center justify-between w-full">
-              <div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 w-full">
+              <div className="flex items-center">
                 {canVoid && selectedSale.status === 'completada' && (
-                  <Button variant="danger" onClick={() => handleVoidSale(selectedSale.id)}>
+                  <Button variant="danger" size="sm" onClick={() => handleVoidSale(selectedSale.id)} className="w-full sm:w-auto">
                     <Ban className="h-4 w-4" /> Anular Venta
                   </Button>
                 )}
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleOpenDigitalReceipt(selectedSale)}>
-                  <ExternalLink className="h-4 w-4" /> Ver Comprobante Digital
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 justify-end w-full sm:w-auto">
+                <Button variant="outline" size="sm" onClick={() => handleOpenDigitalReceipt(selectedSale)}>
+                  <ExternalLink className="h-4 w-4" /> Comprobante Digital
                 </Button>
-                <Button variant="outline" onClick={() => window.print()}>
+                <Button variant="outline" size="sm" onClick={() => window.print()}>
                   <Printer className="h-4 w-4" /> Reimprimir Ticket
                 </Button>
-                <Button onClick={() => setSelectedSale(null)}>Cerrar</Button>
+                <Button size="sm" onClick={() => setSelectedSale(null)}>Cerrar</Button>
               </div>
             </div>
           )
