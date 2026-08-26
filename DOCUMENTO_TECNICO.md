@@ -4,7 +4,7 @@
 ---
 
 > **Versión:** 2.0 — Agosto 2026  
-> **Repositorio:** https://github.com/Luis9007/StoreFlow  
+> **Repositorio:** https://github.com/Luis9007/OptimaPOS  
 > **Stack:** React 18 + TypeScript + Vite + Supabase + Node.js + Express.js + Cloudflare R2 Object Storage  
 
 ---

@@ -69,7 +69,7 @@ Ofrece una **arquitectura desacoplada en 4 capas (MVC + Service Layer)** respald
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/Luis9007/StoreFlow.git
+git clone https://github.com/Luis9007/OptimaPOS.git
 cd Optima\ POS
 
 # 2. Instalar dependencias
