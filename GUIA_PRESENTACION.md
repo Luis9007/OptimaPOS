@@ -1,4 +1,4 @@
-# 🎤 Guía de Presentación — StoreFlow v2.0
+# 🎤 Guía de Presentación — Optima POS v2.0
 ## Sistema de Punto de Venta, Inventario y Gestión Empresarial
 
 > **Para:** Presentación en clase — Ingeniería de Software / Desarrollo Web  
@@ -16,7 +16,7 @@ Iniciar con una pregunta directa al auditorio:
 
 Esperar respuesta. Luego continuar:
 
-> *"Ese es exactamente el problema que StoreFlow resuelve."*
+> *"Ese es exactamente el problema que Optima POS resuelve."*
 
 ---
 
@@ -33,25 +33,28 @@ Presentar este cuadro de problemas reales:
 | 5 | No registran a qué precio compraron cada producto | No pueden saber con exactitud cuánto están ganando |
 | 6 | Llevan la cartera de clientes (crédito) en papeles | Pierden cobros, no tienen histórico |
 
-> *"StoreFlow es la respuesta técnica a estos 6 problemas. Es una plataforma web completa, moderna, que funciona con o sin internet."*
+> *"Optima POS es la respuesta técnica a estos 6 problemas. Es una plataforma web completa, moderna, que funciona con o sin internet y almacena comprobantes en la nube con Cloudflare R2."*
 
 ---
 
-## ❷ QUÉ ES STOREFLOW (2 min)
+## ❷ QUÉ ES OPTIMA POS (2 min)
 
 ### Definición clara
 
-**StoreFlow** es una aplicación web empresarial de Punto de Venta (POS) y gestión de inventario, diseñada para comercios minoristas como tiendas de abarrotes, minimarkets, boutiques y ferreterías.
+**Optima POS** es una aplicación web empresarial de Punto de Venta (POS) y gestión de inventario, diseñada para comercios minoristas como tiendas de abarrotes, minimarkets, boutiques y ferreterías.
 
 ### Características Clave (resumen de alto nivel)
 
-- 🛒 **POS completo** con escáner de código de barras por cámara
-- 📦 **Inventario inteligente** con alertas de stock mínimo
-- 💰 **Control de caja** con apertura, cierre y arqueo
-- 🚚 **Gestión de compras** a proveedores con actualización automática de stock
+- 🛒 **POS completo** con escáner de código de barras por cámara y vista previa
+- ☁️ **Comprobantes Digitales en la Nube** almacenados en Cloudflare R2
+- 📦 **Inventario inteligente** con alertas de stock mínimo y rotación de stock
+- 🏷️ **Motor de Promociones y Descuentos** automáticos por volumen o tipo
+- 📈 **Auditoría de Precios y Costos** (`PriceCostAuditLog`) para trazabilidad
+- 💰 **Control de caja** con apertura, cierre y egresos auditados
+- 🚚 **Gestión de compras** a proveedores con creación rápida de ítems
 - 👥 **Clientes y Proveedores** con cartera de crédito
-- 📊 **Reportes y Auditoría** en tiempo real
-- 📡 **Funciona sin internet** (modo Offline-First)
+- 📊 **Reportes y Auditoría** en tiempo real con exportación a Excel
+- 📡 **Funciona sin internet** (modo Offline-First con cola local)
 
 ---
 

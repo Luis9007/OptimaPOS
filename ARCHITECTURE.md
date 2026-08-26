@@ -1,27 +1,28 @@
-# 🏛️ Documentación Arquitectónica — StoreFlow v2.0
-## Backend Node.js + Express.js & Cliente React (MVC + Service Layer)
+# 🏛️ Documentación Arquitectónica — Optima POS v2.0
+## Backend Node.js + Express.js & Cliente React (MVC + Service Layer + Cloudflare R2 Storage)
 
-Este documento describe la arquitectura completa de **StoreFlow v2.0**, que implementa un **Servidor Backend Node.js con Express.js** en `src/server/` y una aplicación **Frontend en React** en `src/`, cumpliendo **al 100% las 4 reglas arquitectónicas estrictas** del patrón MVC + Service Layer.
+Este documento describe la arquitectura completa de **Optima POS v2.0** (anteriormente conocido como StoreFlow), que implementa un **Servidor Backend Node.js con Express.js** en `src/server/`, una aplicación **Frontend en React** en `src/`, y un servicio de **Almacenamiento de Objetos en la Nube (Cloudflare R2)** para comprobantes digitales, cumpliendo **al 100% las 4 reglas arquitectónicas estrictas** del patrón MVC + Service Layer.
 
 ---
 
-## 1. 🎯 Flujo Completo de una Petición
+## 1. 🎯 Flujo Completo de una Petición e Infraestructura
 
 ```
-Cliente (React SPA)
+Cliente (React SPA - Optima POS)
       │
-      │  HTTP REST (fetch/axios)
+      ├───────────────────────────────────┐
+      │ HTTP REST (fetch/axios)           │ Direct API / Cloud S3 Protocol
+      ▼                                   ▼
+src/server/routes/                 src/services/storageService.ts
+      │                                   │
+      ▼                                   ▼
+src/server/controllers/            Cloudflare R2 Object Storage
+      │                            (Comprobantes / Tickets Digitales / Adjuntos)
       ▼
-src/server/routes/        ←── Solo definen rutas HTTP y delegan al controlador
+src/server/services/
       │
       ▼
-src/server/controllers/   ←── Leen req, extraen parámetros, llaman al servicio, responden con res.json()
-      │
-      ▼
-src/server/services/      ←── Toda la lógica de negocio, validaciones, reglas del dominio
-      │
-      ▼
-src/server/models/        ←── Única capa con acceso a la base de datos (Supabase / SQL)
+src/server/models/
       │
       ▼
 Supabase (PostgreSQL)     ←── Base de datos en la nube con Auth + Row Level Security
@@ -43,7 +44,7 @@ Supabase (PostgreSQL)     ←── Base de datos en la nube con Auth + Row Leve
 ## 3. 🏛️ Estructura Completa del Proyecto
 
 ```
-StoreFlow/
+Optima POS/
 ├── src/
 │   │
 │   ├── server/                         # ── BACKEND NODE.JS + EXPRESS ──
@@ -67,8 +68,8 @@ StoreFlow/
 │   │   │
 │   │   ├── services/
 │   │   │   ├── authService.ts          # Validación de credenciales, generación de sesión
-│   │   │   ├── productService.ts       # Lógica de inventario, SKU, stock mínimo
-│   │   │   ├── salesService.ts         # Cálculo de totales, descuentos, IVA
+│   │   │   ├── productService.ts       # Lógica de inventario, SKU, stock mínimo, auditoría precios
+│   │   │   ├── salesService.ts         # Cálculo de totales, descuentos, IVA, anulaciones
 │   │   │   ├── cashService.ts          # Reglas de apertura/cierre, arqueo
 │   │   │   ├── customerService.ts      # Cartera, abonos, saldo pendiente
 │   │   │   ├── purchaseService.ts      # Recepción de mercancía, actualización de costos
@@ -88,9 +89,9 @@ StoreFlow/
 │   │
 │   ├── controllers/                    # ── CLIENTE REACT — Estado Global ──
 │   │   ├── StoreController.tsx         # Context API: db state + todas las acciones
-│   │   ├── ProductController.ts        # upsertProduct, upsertBrand, upsertCategory
+│   │   ├── ProductController.ts        # upsertProduct, upsertBrand, upsertCategory, auditoría
 │   │   ├── PurchaseController.ts       # addPurchase, receivePurchase, upsertSupplier
-│   │   ├── SalesController.ts          # addSale
+│   │   ├── SalesController.ts          # addSale, voidSale (anulaciones)
 │   │   ├── CashController.ts           # openCash, closeCash, addMovement
 │   │   ├── CustomerController.ts       # upsertCustomer, addPayment
 │   │   ├── AuthController.ts           # login, logout, currentUser
@@ -98,19 +99,21 @@ StoreFlow/
 │   │   ├── types.ts                    # Tipos de acciones del store (discriminated union)
 │   │   └── index.ts                    # Re-exports
 │   │
-│   ├── services/                       # ── CLIENTE REACT — Adaptadores API ──
+│   ├── services/                       # ── CLIENTE REACT — Adaptadores API y Nube ──
 │   │   ├── productService.ts           # fetch('/api/products', ...)
 │   │   ├── purchaseService.ts          # fetch('/api/purchases', ...)
 │   │   ├── salesService.ts             # fetch('/api/sales', ...)
 │   │   ├── cashService.ts              # fetch('/api/cash-sessions', ...)
+│   │   ├── storageService.ts           # Integración Cloudflare R2 (S3 API Client, comprobantes)
 │   │   └── ...
 │   │
 │   ├── models/
-│   │   ├── types.ts                    # Interfaces: Product, Sale, Purchase, Supplier...
-│   │   ├── seed.ts                     # Datos iniciales (categorías, marcas)
+│   │   ├── types.ts                    # Interfaces: Product, Sale, Purchase, Supplier, PriceCostAuditLog...
+│   │   ├── seed.ts                     # Datos iniciales (categorías, marcas, catálogo real)
 │   │   └── supabaseClient.ts           # createClient(SUPABASE_URL, ANON_KEY)
 │   │
 │   ├── lib/
+│   │   ├── promoEngine.ts              # Motor de cálculo de Promociones y Descuentos
 │   │   └── utils.ts                    # formatCurrency, formatDate, generateSequentialId,
 │   │                                   # generateSkuFromName, cn (classnames)
 │   │
@@ -127,20 +130,18 @@ StoreFlow/
 │       │       └── PageHeader.tsx      # Encabezado estándar de página
 │       │
 │       └── pages/
-│           ├── POSPage.tsx             # Punto de Venta (~1,200 líneas)
-│           │                           # CurrencyInput en monto caja y efectivo recibido
-│           │                           # Escáner con vista previa de producto
+│           ├── POSPage.tsx             # Punto de Venta (CurrencyInput, escáner preview, promociones)
 │           ├── ProductsPage.tsx        # Catálogo, CurrencyInput, gestión de marcas
-│           ├── PurchasesPage.tsx       # Compras: búsqueda completa, flujo sin interrupciones
-│           │                           # Creación rápida: proveedor, producto, marca
-│           ├── CashPage.tsx            # Sesiones de caja y arqueo
+│           ├── PurchasesPage.tsx       # Compras: creación rápida proveedor/producto/marca
+│           ├── CashPage.tsx            # Sesiones de caja, egresos y arqueo
 │           ├── SuppliersPage.tsx       # CRUD de proveedores
 │           ├── CustomersPage.tsx       # Clientes y cartera de crédito
-│           ├── ReportsPage.tsx         # Reportes y estadísticas
+│           ├── ReportsPage.tsx         # Reportes, rotación de stock, comprobantes R2, export Excel
 │           ├── DashboardPage.tsx       # Panel de control con KPIs
+│           ├── PromotionsPage.tsx      # Gestión de Reglas de Promoción y Descuentos
 │           ├── SettingsPage.tsx        # Configuración de empresa e impuestos
 │           ├── InventoryPage.tsx       # Ajustes manuales de inventario
-│           └── LogsPage.tsx            # Bitácora de auditoría
+│           └── LogsPage.tsx            # Bitácora de auditoría (Auditoría de precios y eventos)
 │
 ├── supabase/                           # Migraciones SQL y esquema de BD
 ├── ARCHITECTURE.md                     # Este documento
@@ -162,55 +163,30 @@ export function canPerformAction(role: UserRole, action: string): boolean
 
 Cada acción del sistema es evaluada por esta función antes de ejecutarse. Los componentes de la UI también la consumen para mostrar u ocultar elementos según el rol.
 
-```typescript
-// Ejemplo de uso en un componente:
-const canCreate = canPerformAction(currentUser?.role, 'purchase.create');
+---
 
-return canCreate ? <Button onClick={...}>Registrar compra</Button> : null;
+## 5. ☁️ Servicio de Almacenamiento Cloudflare R2 (`storageService.ts`)
+
+Optima POS utiliza **Cloudflare R2** para el almacenamiento duradero de comprobantes digitales de venta, recibos de compra y facturas adjuntas sin costo de egreso de datos.
+
+**Variables de Configuración en `.env`:**
+```env
+VITE_R2_ACCOUNT_ID=tu_account_id
+VITE_R2_ACCESS_KEY_ID=tu_access_key_id
+VITE_R2_SECRET_ACCESS_KEY=tu_secret_access_key
+VITE_R2_BUCKET_NAME=optimapos-comprobantes
+VITE_R2_PUBLIC_DOMAIN=https://pub-xxxxxx.r2.dev
 ```
 
 ---
 
-## 5. 💱 Componente `CurrencyInput` — Diseño Técnico
+## 6. 💱 Componente `CurrencyInput` — Diseño Técnico
 
-El componente `CurrencyInput` en `src/views/components/ui/Input.tsx` resuelve el problema de los campos numéricos nativos del HTML:
-
-**Problemas del `<input type="number">` nativo:**
-- Muestra flechas de spin que no son útiles para montos monetarios grandes.
-- No aplica separadores de miles, haciendo difícil leer `1500000`.
-- No borra el `0` inicial al hacer clic.
-
-**Solución implementada:**
-
-```typescript
-// Estado interno: cadena de texto para el display
-const [displayValue, setDisplayValue] = useState('');
-
-// Al enfocar: mostrar valor sin formato para edición
-const handleFocus = () => {
-  setDisplayValue(value === 0 ? '' : String(value).replace('.', ','));
-};
-
-// Al cambiar: parsear y emitir como número
-const handleChange = (e) => {
-  const digits = e.target.value.replace(/[^\d,]/g, '');
-  const num = parseFloat(digits.replace(',', '.')) || 0;
-  onChange(num);  // siempre emite number
-};
-
-// Al desenfocar: aplicar formato completo
-const handleBlur = () => {
-  const formatted = new Intl.NumberFormat('es-CO', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value).replace(/,/g, 'TEMP').replace(/\./g, '.').replace(/TEMP/g, ',');
-  setDisplayValue(formatted);
-};
-```
+El componente `CurrencyInput` en `src/views/components/ui/Input.tsx` gestiona montos monetarios formateados en tiempo real con separador de miles (`1.500.000`) y 2 decimales (`,00`).
 
 ---
 
-## 6. 📡 Motor Offline-First
+## 7. 📡 Motor Offline-First
 
 ```
 Venta registrada en POS
@@ -236,7 +212,7 @@ en Supabase  localStorage
 
 ---
 
-## 7. 🚀 Ejecución del Servidor Backend Node.js
+## 8. 🚀 Ejecución del Servidor Backend Node.js
 
 ```bash
 # Solo backend:
@@ -248,12 +224,12 @@ npm run dev
 
 | Servicio | URL | Descripción |
 |---|---|---|
-| Frontend React | http://localhost:5173 | SPA con Vite HMR |
+| Frontend React | http://localhost:5173 | SPA con Vite HMR (Optima POS UI) |
 | Backend Express | http://localhost:3001 | API REST completa en `/api/*` |
 
 ---
 
-## 8. 🗄️ Esquema de Base de Datos
+## 9. 🗄️ Esquema de Base de Datos
 
 | Tabla | Columnas Principales |
 |---|---|
@@ -261,7 +237,7 @@ npm run dev
 | `products` | `id`, `sku`, `barcode`, `name`, `category_id`, `brand_id`, `cost`, `price`, `stock`, `min_stock` |
 | `categories` | `id`, `name`, `color` |
 | `brands` | `id`, `name` |
-| `sales` | `id`, `reference`, `customer_id`, `total`, `payment_method`, `user_id`, `created_at` |
+| `sales` | `id`, `reference`, `customer_id`, `total`, `payment_method`, `user_id`, `receipt_url`, `status`, `created_at` |
 | `sale_items` | `id`, `sale_id`, `product_id`, `quantity`, `price`, `discount`, `subtotal` |
 | `purchases` | `id`, `reference`, `supplier_id`, `invoice_number`, `total`, `status` |
 | `purchase_items` | `id`, `purchase_id`, `product_id`, `quantity`, `cost`, `subtotal` |
@@ -270,8 +246,10 @@ npm run dev
 | `cash_sessions` | `id`, `opening_amount`, `closing_amount`, `opened_at`, `closed_at`, `status` |
 | `cash_movements` | `id`, `session_id`, `type`, `amount`, `concept` |
 | `inventory_adjustments` | `id`, `product_id`, `quantity`, `type`, `reason` |
+| `promotions` | `id`, `name`, `type`, `discount_percent`, `min_quantity`, `active` |
+| `price_cost_audit_logs` | `id`, `product_id`, `old_cost`, `new_cost`, `old_price`, `new_price`, `changed_by`, `timestamp` |
 | `activity_logs` | `id`, `user_id`, `action`, `entity`, `entity_id`, `timestamp` |
 
 ---
 
-*StoreFlow v2.0 — ARCHITECTURE.md — Julio 2026*
+*Optima POS v2.0 — ARCHITECTURE.md — Agosto 2026*
