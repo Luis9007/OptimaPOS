@@ -205,7 +205,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!isMounted) return;
 
         // Carga los datos leídos de la API o mantiene la semilla si están vacíos
-        setDb({
+        const freshDb: AppDatabase = {
           users: users.length > 0 ? users : seedDatabase.users,
           categories: categories.length > 0 ? categories : seedDatabase.categories,
           brands: brands.length > 0 ? brands : seedDatabase.brands,
@@ -220,7 +220,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           priceCostLogs: priceCostLogs.length > 0 ? priceCostLogs : seedDatabase.priceCostLogs,
           settings,
           logs,
-        });
+        };
+        setDb(freshDb);
+        saveDbToStorage(freshDb);
       } catch (err) {
         console.error('Error fetching data from services:', err);
       } finally {
@@ -233,12 +235,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   /**
-   * Guarda automáticamente los cambios en LocalStorage en modo Standalone (sin Supabase).
+   * Guarda automáticamente los cambios en LocalStorage para arranque instantáneo (Offline-First).
    */
   useEffect(() => {
-    if (!isSupabaseConfigured) {
-      saveDbToStorage(db);
-    }
+    saveDbToStorage(db);
   }, [db]);
 
   /**

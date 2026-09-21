@@ -7,25 +7,35 @@
  * - Incluye los guardias de autenticación (`ProtectedRoute`) y permisos de rol (`ModuleGuard`).
  */
 
-import type { ReactNode } from 'react';
+import { type ReactNode, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from '../controllers/StoreController';
 import { canAccessModule, type ModuleKey } from '../controllers/permissions';
 
 import { AppLayout } from '../views/components/layout/AppLayout';
 import { LoginPage } from '../views/pages/LoginPage';
-import { DashboardPage } from '../views/pages/DashboardPage';
-import { POSPage } from '../views/pages/POSPage';
-import { ProductsPage } from '../views/pages/ProductsPage';
-import { InventoryPage } from '../views/pages/InventoryPage';
-import { PurchasesPage } from '../views/pages/PurchasesPage';
-import { CustomersPage } from '../views/pages/CustomersPage';
-import { SuppliersPage } from '../views/pages/SuppliersPage';
-import { CashPage } from '../views/pages/CashPage';
-import { ReportsPage } from '../views/pages/ReportsPage';
-import { PromotionsPage } from '../views/pages/PromotionsPage';
-import { LogsPage } from '../views/pages/LogsPage';
-import { SettingsPage } from '../views/pages/SettingsPage';
+
+// Carga perezosa (Code Splitting) para que la pantalla de Login no cargue librerías pesadas como Recharts o Html5Qrcode
+const DashboardPage = lazy(() => import('../views/pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const POSPage = lazy(() => import('../views/pages/POSPage').then(m => ({ default: m.POSPage })));
+const ProductsPage = lazy(() => import('../views/pages/ProductsPage').then(m => ({ default: m.ProductsPage })));
+const InventoryPage = lazy(() => import('../views/pages/InventoryPage').then(m => ({ default: m.InventoryPage })));
+const PurchasesPage = lazy(() => import('../views/pages/PurchasesPage').then(m => ({ default: m.PurchasesPage })));
+const CustomersPage = lazy(() => import('../views/pages/CustomersPage').then(m => ({ default: m.CustomersPage })));
+const SuppliersPage = lazy(() => import('../views/pages/SuppliersPage').then(m => ({ default: m.SuppliersPage })));
+const CashPage = lazy(() => import('../views/pages/CashPage').then(m => ({ default: m.CashPage })));
+const ReportsPage = lazy(() => import('../views/pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const PromotionsPage = lazy(() => import('../views/pages/PromotionsPage').then(m => ({ default: m.PromotionsPage })));
+const LogsPage = lazy(() => import('../views/pages/LogsPage').then(m => ({ default: m.LogsPage })));
+const SettingsPage = lazy(() => import('../views/pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+
+function RouteLoader() {
+  return (
+    <div className="flex h-64 w-full items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { currentUser } = useStore();

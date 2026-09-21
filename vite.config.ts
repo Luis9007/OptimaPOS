@@ -11,7 +11,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    exclude: ['lucide-react'],
+    include: ['lucide-react', 'react', 'react-dom', 'react-router-dom', 'framer-motion'],
   },
   server: {
     proxy: {
