@@ -1,4 +1,4 @@
-# 🎤 Guía de Presentación — Optima POS v2.0
+# 🎤 Guía de Presentación — Optima POS v1.0
 ## Sistema de Punto de Venta, Inventario y Gestión Empresarial
 
 > **Para:** Presentación en clase — Ingeniería de Software / Desarrollo Web  
@@ -33,7 +33,7 @@ Presentar este cuadro de problemas reales:
 | 5 | No registran a qué precio compraron cada producto | No pueden saber con exactitud cuánto están ganando |
 | 6 | Llevan la cartera de clientes (crédito) en papeles | Pierden cobros, no tienen histórico |
 
-> *"Optima POS es la respuesta técnica a estos 6 problemas. Es una plataforma web completa, moderna, que funciona con o sin internet y almacena comprobantes en la nube con Cloudflare R2."*
+> *"Optima POS es la respuesta técnica a estos 6 problemas. Es un sistema POS Cloud completo, moderno, que funciona con o sin internet y almacena comprobantes en la nube con Cloudflare R2."*
 
 ---
 
@@ -41,7 +41,7 @@ Presentar este cuadro de problemas reales:
 
 ### Definición clara
 
-**Optima POS** es una aplicación web empresarial de Punto de Venta (POS) y gestión de inventario, diseñada para comercios minoristas como tiendas de abarrotes, minimarkets, boutiques y ferreterías.
+**Optima POS** es un sistema POS Cloud empresarial de Punto de Venta (POS) y gestión de inventario, diseñado para comercios minoristas como tiendas de abarrotes, minimarkets, boutiques y ferreterías.
 
 ### Características Clave (resumen de alto nivel)
 
@@ -667,7 +667,7 @@ USUARIO hace clic en "Cobrar"
 - Mostrar la **tarjeta verde de vista previa** que aparece en tiempo real con el nombre, precio y stock del producto detectado.
 - Mencionar que si el código no existe en el catálogo, aparece una tarjeta **roja** con el mensaje "Producto no encontrado".
 
-> *"Esta es una de las mejoras más importantes de la versión 2.0. Antes el escáner solo mostraba el código crudo. Ahora muestra toda la información del producto al instante, para que el cajero confirme visualmente que está cobrando el producto correcto."*
+> *"Esta es una de las mejoras más importantes de la versión 1.0. Antes el escáner solo mostraba el código crudo. Ahora muestra toda la información del producto al instante, para que el cajero confirme visualmente que está cobrando el producto correcto."*
 
 **Paso 4 — Procesar pago en efectivo:**
 - Seleccionar método de pago: **Efectivo**.
@@ -712,7 +712,7 @@ USUARIO hace clic en "Cobrar"
 
 ### 🚚 DEMO 4 — Compras a Proveedores
 
-Este módulo tiene las mejoras más significativas de la versión 2.0.
+Este módulo tiene las mejoras más significativas de la versión 1.0.
 
 **Paso 1 — Registrar una compra:**
 - Clic en "Registrar compra".
@@ -878,7 +878,7 @@ Cuando un campo tiene `0` por defecto y el usuario hace clic, el `0` se borra au
 
 ### Decisión 3: Flujo sin interrupciones en Compras
 
-Antes de v2.0, registrar una compra con un producto nuevo requería:
+Antes de esta versión, registrar una compra con un producto nuevo requería:
 1. Ir a Proveedores → crear proveedor → copiar el ID → volver a Compras.
 2. Ir a Productos → crear producto → copiar el ID → volver a Compras.
 
@@ -898,7 +898,7 @@ El sistema usa un sistema de tokens CSS (variables) que soporta modo claro y osc
 2. **UX**: Los detalles de interfaz (formato de números, flujos sin interrupciones) son tan importantes como la funcionalidad.
 3. **Resiliencia**: Un sistema de producción real debe funcionar aunque falle la infraestructura.
 4. **RBAC**: La seguridad no es un añadido, es parte del diseño desde el principio.
-5. **Iteración**: Las mejoras de v2.0 nacieron de necesidades reales: un usuario real probó el sistema y reportó lo que no funcionaba bien.
+5. **Iteración**: Las mejoras de v1.0 nacieron de necesidades reales: un usuario real probó el sistema y reportó lo que no funcionaba bien.
 
 > *"StoreFlow no es un proyecto académico terminado. Es una aplicación funcional que podría desplegarse en una tienda real hoy mismo. De hecho, está en GitHub y cualquiera puede clonarla y ejecutarla en 5 minutos."*
 
@@ -935,4 +935,4 @@ El sistema usa un sistema de tokens CSS (variables) que soporta modo claro y osc
 
 ---
 
-*StoreFlow v2.0 — Guía de Presentación. Preparada para presentación académica universitaria.*
+*Optima POS v1.0 — Guía de Presentación. Preparada para presentación académica universitaria.*

@@ -49,8 +49,17 @@ export const salesModel = {
       user_id: sale.userId || null,
       user_name: sale.userName,
       status: sale.status,
+      receipt_url: sale.receiptUrl || null,
     });
     if (error) throw error;
+  },
+
+  /**
+   * Actualiza la URL del comprobante digital de una venta.
+   */
+  async updateReceiptUrl(saleId: string, receiptUrl: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    await supabase.from('sales').update({ receipt_url: receiptUrl }).eq('id', saleId);
   },
 
   /**
@@ -75,6 +84,7 @@ export const salesModel = {
    */
   async upsertRawSale(payload: any): Promise<void> {
     if (!isSupabaseConfigured) return;
+
     await supabase.from('sales').upsert({
       id: payload.id,
       reference: payload.reference,
@@ -88,6 +98,7 @@ export const salesModel = {
       cash_received: payload.cashReceived,
       change: payload.change,
       status: payload.status || 'completada',
+      receipt_url: payload.receiptUrl || null,
       user_id: payload.userId || null,
       user_name: payload.userName || 'Sistema',
       created_at: payload.createdAt,

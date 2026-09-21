@@ -34,6 +34,7 @@ export const customerModel = {
       email: c.email,
       address: c.address,
       balance: c.balance,
+      welcome_redemptions: c.welcomeRedemptions || 0,
       notes: c.notes,
     });
     if (error) throw error;
@@ -52,6 +53,7 @@ export const customerModel = {
       email: payload.email || null,
       address: payload.address || null,
       balance: payload.balance || 0,
+      welcome_redemptions: payload.welcomeRedemptions || 0,
       notes: payload.notes || null,
     });
   },

@@ -15,6 +15,7 @@ import cashRoutes from './cashRoutes';
 import customerRoutes from './customerRoutes';
 import purchaseRoutes from './purchaseRoutes';
 import settingsRoutes from './settingsRoutes';
+import uploadRoutes from './uploadRoutes';
 
 const apiRouter = Router();
 
@@ -25,5 +26,6 @@ apiRouter.use('/cash', cashRoutes);
 apiRouter.use('/customers', customerRoutes);
 apiRouter.use('/purchases', purchaseRoutes);
 apiRouter.use('/settings', settingsRoutes);
+apiRouter.use('/upload', uploadRoutes);
 
 export default apiRouter;

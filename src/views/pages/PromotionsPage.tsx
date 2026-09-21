@@ -1,19 +1,18 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Tag, Plus, Search, Pencil, Trash2, CheckCircle2, XCircle, Percent, Gift, DollarSign, Calendar, Layers, Power,
+  Tag, Plus, Search, Pencil, Trash2, CheckCircle2, Percent, Gift, Power,
 } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { canPerformAction } from '@/controllers/permissions';
 import { Button } from '@/views/components/ui/Button';
 import { Input, Select, CurrencyInput, NumberInput } from '@/views/components/ui/Input';
-import { Card, CardContent, Badge, EmptyState } from '@/views/components/ui/Card';
+import { Card, Badge, EmptyState } from '@/views/components/ui/Card';
 import { Dialog } from '@/views/components/ui/Dialog';
 import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
-import { formatCurrency, formatDateTime, generateSequentialId, cn } from '@/lib/utils';
+import { formatCurrency, generateSequentialId, cn } from '@/lib/utils';
 import type { Promotion } from '@/models/types';
 
 const emptyPromo = (existingPromos: Promotion[] = []): Promotion => ({

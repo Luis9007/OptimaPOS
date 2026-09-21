@@ -12,7 +12,7 @@
  */
 
 import { useCallback } from 'react';
-import type { AppDatabase, Supplier, Purchase, CashMovementType } from '../models/types';
+import type { AppDatabase, Supplier, Purchase, CashMovementType, User } from '../models/types';
 import { generateId, generateReference } from '../lib/utils';
 import { purchaseService } from '../services/purchaseService';
 
@@ -30,6 +30,7 @@ type LogMovementFn = (
 export function usePurchaseController(
   db: AppDatabase,
   setDb: React.Dispatch<React.SetStateAction<AppDatabase>>,
+  currentUser: User | null,
   logSessionMovement: LogMovementFn,
   addLog: (action: string, detail: string) => void
 ) {
@@ -116,9 +117,12 @@ export function usePurchaseController(
   const receivePurchase = useCallback(
     (id: string) => {
       let purchRef = '';
+      let targetPurchase: Purchase | undefined;
+
       setDb((prev) => {
         const purchase = prev.purchases.find((p) => p.id === id);
         if (!purchase || purchase.status === 'recibida') return prev;
+        targetPurchase = purchase;
         purchRef = purchase.reference;
 
         // Incrementa el stock de cada producto involucrado en la compra recibida
@@ -134,7 +138,29 @@ export function usePurchaseController(
       if (purchRef) {
         addLog('Recepción de Compra', `Mercancía recibida e ingresada al inventario para la orden ${purchRef}`);
       }
-      purchaseService.receivePurchase(id).catch(console.error);
+      purchaseService.receivePurchase(id, targetPurchase, db.products, currentUser).catch(console.error);
+    },
+    [db.products, currentUser, setDb, addLog]
+  );
+
+  /**
+   * Cancela una orden de compra pendiente.
+   */
+  const cancelPurchase = useCallback(
+    (id: string) => {
+      let purchRef = '';
+      setDb((prev) => {
+        const purchase = prev.purchases.find((p) => p.id === id);
+        if (!purchase || purchase.status !== 'pendiente') return prev;
+        purchRef = purchase.reference;
+        const purchases = prev.purchases.map((p) => (p.id === id ? { ...p, status: 'cancelada' as const } : p));
+        return { ...prev, purchases };
+      });
+
+      if (purchRef) {
+        addLog('Cancelación de Compra', `Orden de compra ${purchRef} cancelada`);
+      }
+      purchaseService.cancelPurchase(id).catch(console.error);
     },
     [setDb, addLog]
   );
@@ -144,5 +170,6 @@ export function usePurchaseController(
     deleteSupplier,
     addPurchase,
     receivePurchase,
+    cancelPurchase,
   };
 }

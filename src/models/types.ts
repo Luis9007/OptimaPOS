@@ -145,6 +145,7 @@ export type CashMovementType = 'apertura' | 'cierre' | 'venta' | 'abono' | 'clie
 /** Registro de movimiento de caja registradora */
 export interface CashMovement {
   id: string;
+  sessionId?: string;
   type: CashMovementType;
   amount: number;
   concept: string;

@@ -27,6 +27,7 @@ export const customerService = {
       email: c.email || '',
       address: c.address || '',
       balance: Number(c.balance) || 0,
+      welcomeRedemptions: Number(c.welcome_redemptions) || 0,
       notes: c.notes || '',
       createdAt: c.created_at,
     }));

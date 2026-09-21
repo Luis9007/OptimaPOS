@@ -1,7 +1,7 @@
 # 🎨 Manual de Identidad de Marca — Optima POS
 
-> **Versión 2.0 | Guía de Estándares Gráficos y Comunicación Visual**  
-> *Plataforma web moderna, modular y de alto rendimiento diseñada para la gestión comercial integral, Punto de Venta (POS), control de inventarios y auditoría operativa en tiempo real.*
+> **Versión 1.0 | Guía de Estándares Gráficos y Comunicación Visual**  
+> *Sistema POS Cloud moderno, modular y de alto rendimiento diseñado para la gestión comercial integral, Punto de Venta (POS), control de inventarios y auditoría operativa en tiempo real.*
 
 ---
 
@@ -26,7 +26,7 @@ A continuación se presentan los activos gráficos oficiales de la marca:
 
 ![Isologo Completo - Versión Clara](./public/brand/logo_variante_clara.png)
 
-* **Composición**: Isotipo emblemático "O" + Nombre corporativo "Optima POS" + Descriptor de plataforma ("Plataforma Web de Gestión Comercial & POS").
+* **Composición**: Isotipo emblemático "O" + Nombre corporativo "Optima POS" + Descriptor de plataforma ("Sistema POS Cloud de Gestión Comercial").
 * **Uso Principal**: 
   * Pantalla principal de inicio de sesión (*Login Page*).
   * Documentación corporativa, manuales, propuestas de software y contratos.
@@ -142,4 +142,4 @@ Para asegurar el impacto visual del logotipo en cualquier medio, se deben respet
 ---
 
 > [!NOTE]
-> Este manual de identidad garantiza la consistencia visual de **Optima POS** tanto en la plataforma web como en materiales impresos, comprobantes térmicos y documentación corporativa.
+> Este manual de identidad garantiza la consistencia visual de **Optima POS** tanto en el sistema POS Cloud como en materiales impresos, comprobantes térmicos y documentación corporativa.

@@ -68,6 +68,7 @@ export const purchaseModel = {
       invoice_number: p.invoiceNumber,
       total: p.total,
       status: p.status,
+      invoice_file_url: p.invoiceFileUrl || null,
     });
 
     const items = p.items.map((item) => ({
@@ -87,5 +88,13 @@ export const purchaseModel = {
   async updatePurchaseStatus(id: string, status: string): Promise<void> {
     if (!isSupabaseConfigured) return;
     await supabase.from('purchases').update({ status }).eq('id', id);
+  },
+
+  /**
+   * Actualiza la URL del comprobante/factura de una compra.
+   */
+  async updateInvoiceFileUrl(id: string, invoiceFileUrl: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    await supabase.from('purchases').update({ invoice_file_url: invoiceFileUrl }).eq('id', id);
   },
 };

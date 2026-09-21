@@ -11,6 +11,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { AppDatabase, User } from '../models/types';
+import { seedDatabase } from '../models/seed';
 import { authService } from '../services/authService';
 
 const SESSION_KEY = 'storeflow_session_v1';
@@ -47,12 +48,31 @@ export function useAuthController(
    */
   const login = useCallback(
     (email: string, password: string) => {
-      const user = db.users.find(
+      const cleanEmail = email.trim().toLowerCase();
+      const altEmail = cleanEmail.endsWith('@storeflow.com')
+        ? cleanEmail.replace('@storeflow.com', '@optimapos.com')
+        : cleanEmail.endsWith('@optimapos.com')
+        ? cleanEmail.replace('@optimapos.com', '@storeflow.com')
+        : cleanEmail;
+
+      const userList = db.users && db.users.length > 0 ? db.users : seedDatabase.users;
+      let user = userList.find(
         (u) =>
-          u.email.toLowerCase() === email.toLowerCase() &&
+          (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === altEmail) &&
           u.password === password &&
           u.active
       );
+
+      // Fallback a seedDatabase si el usuario no fue encontrado en db.users
+      if (!user && seedDatabase.users) {
+        user = seedDatabase.users.find(
+          (u) =>
+            (u.email.toLowerCase() === cleanEmail || u.email.toLowerCase() === altEmail) &&
+            u.password === password &&
+            u.active
+        );
+      }
+
       if (user) {
         setCurrentUser(user);
         addLog('Inicio de sesión', `El usuario ${user.name} (${user.role}) inició sesión`);

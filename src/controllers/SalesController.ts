@@ -110,6 +110,7 @@ export function useSalesController(
                 item.id === saleId ? { ...item, receiptUrl } : item
               ),
             }));
+            salesService.updateReceiptUrl(saleId, receiptUrl).catch(console.error);
           }
         })
         .catch(console.error);
@@ -133,9 +134,13 @@ export function useSalesController(
   const voidSale = useCallback(
     (id: string) => {
       let voidedRef = '';
+      let targetSale: Sale | undefined;
+      let currentCustBalance: number | undefined;
+
       setDb((prev) => {
         const sale = prev.sales.find((s) => s.id === id);
         if (!sale || sale.status === 'anulada') return prev;
+        targetSale = sale;
         voidedRef = sale.reference;
 
         // 1. Reintegra el stock de los ítems de la venta anulada
@@ -147,6 +152,8 @@ export function useSalesController(
         // 2. Si la venta fue a crédito, descuenta la deuda del cliente
         let customers = prev.customers;
         if (sale.paymentMethod === 'credito' && sale.customerId) {
+          const cust = prev.customers.find((c) => c.id === sale.customerId);
+          currentCustBalance = cust?.balance;
           customers = prev.customers.map((c) =>
             c.id === sale.customerId
               ? { ...c, balance: Math.max(0, (c.balance || 0) - sale.total) }
@@ -187,9 +194,9 @@ export function useSalesController(
         addLog('Anulación de Venta', `Venta ${voidedRef} fue anulada. Stock e inventario devueltos.`);
       }
       // Petición API REST via salesService
-      salesService.voidSale(id).catch(console.error);
+      salesService.voidSale(id, targetSale, db.products, currentCustBalance).catch(console.error);
     },
-    [setDb, addLog]
+    [db.products, setDb, addLog]
   );
 
   return {

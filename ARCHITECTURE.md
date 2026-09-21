@@ -1,7 +1,7 @@
-# 🏛️ Documentación Arquitectónica — Optima POS v2.0
+# 🏛️ Documentación Arquitectónica — Optima POS v1.0
 ## Backend Node.js + Express.js & Cliente React (MVC + Service Layer + Cloudflare R2 Storage)
 
-Este documento describe la arquitectura completa de **Optima POS v2.0** (anteriormente conocido como StoreFlow), que implementa un **Servidor Backend Node.js con Express.js** en `src/server/`, una aplicación **Frontend en React** en `src/`, y un servicio de **Almacenamiento de Objetos en la Nube (Cloudflare R2)** para comprobantes digitales, cumpliendo **al 100% las 4 reglas arquitectónicas estrictas** del patrón MVC + Service Layer.
+Este documento describe la arquitectura completa de **Optima POS v1.0** (anteriormente conocido como StoreFlow), que implementa un **Servidor Backend Node.js con Express.js** en `src/server/`, una aplicación **Frontend en React** en `src/`, y un servicio de **Almacenamiento de Objetos en la Nube (Cloudflare R2)** para comprobantes digitales, cumpliendo **al 100% las 4 reglas arquitectónicas estrictas** del patrón MVC + Service Layer.
 
 ---
 
@@ -145,7 +145,7 @@ Optima POS/
 │
 ├── supabase/                           # Migraciones SQL y esquema de BD
 ├── ARCHITECTURE.md                     # Este documento
-├── DOCUMENTO_TECNICO.md                # Documento técnico completo v2.0
+├── DOCUMENTO_TECNICO.md                # Documento técnico completo v1.0
 ├── README.md                           # Guía de instalación y uso
 ├── package.json
 ├── vite.config.ts
@@ -252,4 +252,4 @@ npm run dev
 
 ---
 
-*Optima POS v2.0 — ARCHITECTURE.md — Agosto 2026*
+*Optima POS v1.0 — ARCHITECTURE.md — Agosto 2026*

@@ -132,7 +132,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             </button>
           </div>
           <div className="pt-2 text-center text-[10px] text-white/30 font-mono tracking-wider">
-            Powered by Optima POS v2.0
+            Powered by Optima POS v1.0
           </div>
         </div>
       </aside>

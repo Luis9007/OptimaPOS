@@ -1,5 +1,5 @@
 -- ==========================================
--- StoreFlow Database Schema for Supabase (PostgreSQL)
+-- Optima POS Database Schema for Supabase (PostgreSQL)
 -- ==========================================
 
 -- Enable UUID extension
@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS customers (
     email VARCHAR(100),
     address TEXT,
     balance NUMERIC(12, 2) DEFAULT 0,
+    welcome_redemptions INT DEFAULT 0,
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS purchases (
     invoice_number VARCHAR(50),
     total NUMERIC(12, 2) DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'recibida', 'cancelada')),
+    invoice_file_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -113,6 +115,7 @@ CREATE TABLE IF NOT EXISTS sales (
     user_id VARCHAR(50) REFERENCES app_users(id) ON DELETE SET NULL,
     user_name VARCHAR(100),
     status VARCHAR(20) DEFAULT 'completada' CHECK (status IN ('completada', 'anulada')),
+    receipt_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -175,10 +178,11 @@ CREATE TABLE IF NOT EXISTS company_settings (
     address TEXT,
     phone VARCHAR(30),
     email VARCHAR(100),
-    currency VARCHAR(10) DEFAULT 'MXN',
+    currency VARCHAR(10) DEFAULT 'COP',
     currency_symbol VARCHAR(5) DEFAULT '$',
-    tax_rate NUMERIC(5, 2) DEFAULT 16,
-    logo_text VARCHAR(50) DEFAULT 'StoreFlow',
+    tax_rate NUMERIC(5, 2) DEFAULT 19,
+    logo_text VARCHAR(50) DEFAULT 'Optima POS',
+    logo_url TEXT,
     theme VARCHAR(10) DEFAULT 'dark',
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     CONSTRAINT single_row CHECK (id = 1)
@@ -190,6 +194,41 @@ CREATE TABLE IF NOT EXISTS activity_logs (
     action VARCHAR(100) NOT NULL,
     detail TEXT,
     user_id VARCHAR(50) REFERENCES app_users(id) ON DELETE SET NULL,
+    user_name VARCHAR(100),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 13. Promotions Table
+CREATE TABLE IF NOT EXISTS promotions (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    code VARCHAR(50),
+    type VARCHAR(30) NOT NULL CHECK (type IN ('percentage', 'fixed', 'buy_x_get_y')),
+    target VARCHAR(30) NOT NULL CHECK (target IN ('all', 'product', 'category', 'brand')),
+    target_id VARCHAR(50),
+    value NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    min_purchase_amount NUMERIC(12, 2) DEFAULT 0,
+    start_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    requires_registered_customer BOOLEAN DEFAULT false,
+    max_redemptions_per_customer INT,
+    is_welcome_promo BOOLEAN DEFAULT false,
+    active BOOLEAN DEFAULT true,
+    usage_count INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 14. Price and Cost Audit Logs Table
+CREATE TABLE IF NOT EXISTS price_cost_audit_logs (
+    id VARCHAR(50) PRIMARY KEY,
+    product_id VARCHAR(50) REFERENCES products(id) ON DELETE SET NULL,
+    product_name VARCHAR(150) NOT NULL,
+    sku VARCHAR(50),
+    old_price NUMERIC(12, 2) DEFAULT 0,
+    new_price NUMERIC(12, 2) DEFAULT 0,
+    old_cost NUMERIC(12, 2) DEFAULT 0,
+    new_cost NUMERIC(12, 2) DEFAULT 0,
+    user_id VARCHAR(50),
     user_name VARCHAR(100),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -212,6 +251,8 @@ ALTER TABLE cash_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory_adjustments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE company_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE promotions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE price_cost_audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Allow public access via anon key for client-side app
 CREATE POLICY "Public Read/Write for app_users" ON app_users FOR ALL USING (true) WITH CHECK (true);
@@ -229,6 +270,18 @@ CREATE POLICY "Public Read/Write for cash_movements" ON cash_movements FOR ALL U
 CREATE POLICY "Public Read/Write for inventory_adjustments" ON inventory_adjustments FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write for company_settings" ON company_settings FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Public Read/Write for activity_logs" ON activity_logs FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Read/Write for promotions" ON promotions FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Public Read/Write for price_cost_audit_logs" ON price_cost_audit_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- Permisos sobre el esquema y tablas para roles de Supabase (anon, authenticated, service_role)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON ROUTINES TO anon, authenticated, service_role;
 
 -- ==========================================
 -- SEED INITIAL DATA
@@ -236,8 +289,8 @@ CREATE POLICY "Public Read/Write for activity_logs" ON activity_logs FOR ALL USI
 
 -- Insert Users
 INSERT INTO app_users (id, name, email, password, role, active) VALUES
-('user_super', 'Sofía Supervisor', 'supervisor@storeflow.com', 'super123', 'supervisor', true),
-('user_cajero', 'Carlos Cajero', 'cajero@storeflow.com', 'cajero123', 'cajero', true)
+('user_super', 'Sofía Supervisor', 'supervisor@optimapos.com', 'super123', 'supervisor', true),
+('user_cajero', 'Carlos Cajero', 'cajero@optimapos.com', 'cajero123', 'cajero', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Categories
@@ -261,43 +314,49 @@ INSERT INTO brands (id, name) VALUES
 ('br_p&g', 'Procter & Gamble'),
 ('br_colgate', 'Colgate'),
 ('br_unilever', 'Unilever'),
-('br_bimbo', 'Bimbo')
+('br_bimbo', 'Bimbo'),
+('brand-1785344683802', 'Familia / Dersa'),
+('brand_member_s_selection', 'Member''s Selection'),
+('brand_medalla_de_oro', 'Medalla de Oro'),
+('brand_refisal', 'Refisal'),
+('brand_meel', 'Meel'),
+('brand_al_fresco', 'Al Fresco'),
+('brand_bonaropa', 'Bonaropa'),
+('brand_aromatel', 'Aromatel'),
+('brand_baygon', 'Baygon'),
+('brand_alma_de_romero', 'Alma de Romero'),
+('brand_ego', 'Ego'),
+('brand_pan', 'Harina P.A.N.'),
+('brand_colcafe', 'Colcafé'),
+('brand_dona_pepa', 'Doña Pepa')
 ON CONFLICT (id) DO NOTHING;
 
--- Insert Products
-INSERT INTO products (id, sku, barcode, name, description, category_id, brand_id, cost, price, stock, min_stock, unit, favorite, active) VALUES
-('prod_001', 'COCA-600', '7501057530015', 'Coca-Cola 600ml', 'Refresco de cola 600ml', 'cat_bebidas', 'br_coca', 2800.00, 4500.00, 120.00, 24.00, 'pza', true, true),
-('prod_002', 'COCA-2L', '7501057530022', 'Coca-Cola 2L', 'Refresco de cola 2 litros', 'cat_bebidas', 'br_coca', 5800.00, 8500.00, 60.00, 12.00, 'pza', true, true),
-('prod_003', 'PEPSI-600', '7501057530039', 'Pepsi 600ml', 'Refresco de cola 600ml', 'cat_bebidas', 'br_pepsi', 2500.00, 4200.00, 80.00, 24.00, 'pza', false, true),
-('prod_004', 'SPRITE-600', '7501057530046', 'Sprite 600ml', 'Refresco de limón 600ml', 'cat_bebidas', 'br_coca', 2800.00, 4500.00, 8.00, 24.00, 'pza', false, true),
-('prod_005', 'AGUA-1L', '7501057530053', 'Agua Ciel 1L', 'Agua pura 1 litro', 'cat_bebidas', 'br_coca', 1500.00, 3000.00, 90.00, 24.00, 'pza', false, true),
-('prod_006', 'LECHE-1L', '7501057530060', 'Leche Colanta Entera 1L', 'Leche entera pasteurizada', 'cat_lacteos', 'br_lala', 3200.00, 4800.00, 40.00, 12.00, 'pza', true, true),
-('prod_007', 'YOGURT-1K', '7501057530077', 'Yogurt Nestlé 1kg', 'Yogurt de fresa', 'cat_lacteos', 'br_nestle', 8500.00, 13500.00, 25.00, 6.00, 'pza', false, true),
-('prod_008', 'QUESO-500', '7501057530084', 'Queso Alpina 500g', 'Queso sabana rebanado', 'cat_lacteos', 'br_lala', 12000.00, 18500.00, 15.00, 6.00, 'pza', false, true),
-('prod_009', 'ARROZ-1K', '7501057530091', 'Arroz Roa 1kg', 'Arroz blanco grano largo', 'cat_abarrotes', 'br_nestle', 3200.00, 4800.00, 50.00, 12.00, 'pza', false, true),
-('prod_010', 'FRIJOL-1K', '7501057530107', 'Frijol Cargamanto 1kg', 'Frijol seleccionado', 'cat_abarrotes', 'br_nestle', 4500.00, 7200.00, 35.00, 12.00, 'pza', false, true),
-('prod_011', 'ACEITE-1L', '7501057530114', 'Aceite Premier 1L', 'Aceite vegetal', 'cat_abarrotes', 'br_unilever', 7500.00, 11500.00, 28.00, 10.00, 'pza', true, true),
-('prod_012', 'AZUCAR-1K', '7501057530121', 'Azúcar Incauca 1kg', 'Azúcar refinada', 'cat_abarrotes', 'br_nestle', 3500.00, 5200.00, 45.00, 12.00, 'pza', false, true),
-('prod_013', 'PAPAS-SAB', '7501057530138', 'Papas Margarita 45g', 'Papas fritas clásicas', 'cat_snacks', 'br_sabritas', 2200.00, 3500.00, 100.00, 24.00, 'pza', true, true),
-('prod_014', 'DORITOS', '7501057530145', 'Doritos Nacho 65g', 'Totopos de nacho', 'cat_snacks', 'br_sabritas', 2800.00, 4500.00, 70.00, 24.00, 'pza', false, true),
-('prod_015', 'GALLETAS', '7501057530152', 'Galletas Festival', 'Galletas de chocolate', 'cat_snacks', 'br_gamesa', 1800.00, 3000.00, 60.00, 24.00, 'pza', false, true),
-('prod_016', 'TORTILLAS', '7501057530169', 'Tortillas Bimbo 1kg', 'Tortillas de maíz', 'cat_abarrotes', 'br_bimbo', 2500.00, 4000.00, 5.00, 12.00, 'pza', false, true),
-('prod_017', 'PAN-BIMBO', '7501057530176', 'Pan Bimbo Grande', 'Pan blanco rebanado', 'cat_abarrotes', 'br_bimbo', 5500.00, 8500.00, 20.00, 8.00, 'pza', false, true),
-('prod_018', 'JABON', '7501057530183', 'Jabón Rey 250g', 'Jabón de lavandería', 'cat_limpieza', 'br_p&g', 2800.00, 4500.00, 55.00, 12.00, 'pza', false, true),
-('prod_019', 'CLOROX-1L', '7501057530190', 'Clorox 1L', 'Cloro concentrado', 'cat_limpieza', 'br_p&g', 3200.00, 5000.00, 30.00, 12.00, 'pza', false, true),
-('prod_020', 'PASTA-DENT', '7501057530206', 'Pasta Dental Colgate', 'Pasta dental 100ml', 'cat_cuidado', 'br_colgate', 4500.00, 7500.00, 40.00, 12.00, 'pza', false, true),
-('prod_021', 'SHAMPOO', '7501057530213', 'Shampoo Savital 400ml', 'Shampoo hidratante', 'cat_cuidado', 'br_unilever', 8500.00, 14000.00, 25.00, 8.00, 'pza', false, true),
-('prod_022', 'JABON-TOALLA', '7501057530220', 'Jabón Palmolive', 'Jabón de tocador 150g', 'cat_cuidado', 'br_colgate', 2200.00, 3800.00, 48.00, 12.00, 'pza', false, true),
-('prod_023', 'PAPEL-HIG', '7501057530237', 'Papel Higiénico Familia', 'Paquete 4 rollos', 'cat_limpieza', 'br_p&g', 5500.00, 9200.00, 32.00, 10.00, 'pza', false, true)
+-- Insert Products (Catálogo Oficial)
+INSERT INTO products (id, sku, barcode, name, description, category_id, brand_id, cost, price, stock, min_stock, unit, active, favorite, created_at) VALUES
+('prod_015', 'L', '7706303714097', 'LAVAPLATOS LIMÓN', 'LAVAPLATOS LIMÓN 500ml', 'cat_limpieza', 'brand-1785344683802', 1500.00, 2500.00, 20.00, 5.00, 'pza', true, false, '2026-07-29T17:04:51.549Z'),
+('prod_002', 'CAF-INS', '607766665865', 'CAFÉ INSTANTÁNEO', 'CAFÉ INSTANTÁNEO 320g', 'cat_abarrotes', 'brand_member_s_selection', 20000.00, 35000.00, 35.00, 5.00, 'pza', true, false, '2026-07-29T16:02:33.782Z'),
+('prod_001', 'ALI-VIN-ESP-ACE', '7701008626997', 'ACEITE DE OLIVA', 'Aceite de oliva 500ml', 'cat_abarrotes', 'brand_medalla_de_oro', 3500.00, 5000.00, 19.00, 5.00, 'pza', true, true, '2026-07-29T15:54:39.429Z'),
+('prod_004', 'SAL-MAR', '7703812411646', 'SAL MARINA', 'SAL MARINA 500g', 'cat_abarrotes', 'brand_refisal', 1500.00, 2600.00, 35.00, 5.00, 'pza', true, false, '2026-07-29T16:06:55.430Z'),
+('prod_006', 'MIE-AVE', '7700304110445', 'MIEL DE AVEJAS', 'MIEL DE AVEJAS 350g', 'cat_abarrotes', 'brand_meel', 2500.00, 4000.00, 17.00, 5.00, 'pza', true, false, '2026-07-29T16:11:11.035Z'),
+('prod_005', 'PAS-TOM', '9107291262504', 'PASTA DE TOMATE', 'PASTA DE TOMATE 250g', 'cat_abarrotes', 'brand_al_fresco', 5000.00, 8000.00, 28.00, 5.00, 'pza', true, false, '2026-07-29T16:08:56.637Z'),
+('prod_007', 'DET-LIQ', '7700304587636', 'DETERGENTE LÍQUIDO', 'DETERGENTE LÍQUIDO 3L', 'cat_limpieza', 'brand_bonaropa', 6000.00, 10000.00, 20.00, 5.00, 'pza', true, false, '2026-07-29T16:19:12.717Z'),
+('prod_008', 'SUA-ROP', '7702191522066', 'SUAVIZANTE PARA ROPA', 'SUAVIZANTE PARA ROPA 1,3L', 'cat_limpieza', 'brand_aromatel', 5000.00, 8900.00, 22.00, 5.00, 'pza', true, false, '2026-07-29T16:21:46.244Z'),
+('prod_009', 'BAY-MAT-CUC', '7501032926069', 'BAYGON MATA CUCARACHAS', 'BAYGON MATA CUCARACHAS Y CHIRIPAS 241g', 'cat_limpieza', 'brand_baygon', 11000.00, 18000.00, 25.00, 5.00, 'pza', true, false, '2026-07-29T16:24:14.974Z'),
+('prod_010', 'SHA-ANT-CRE', '7702354961411', 'SHAMPOO ANTICAÍDA Y CRECIMIENTO', 'SHAMPOO ANTICAÍDA Y CRECIMIENTO 500ml', 'cat_cuidado', 'brand_alma_de_romero', 9000.00, 13000.00, 18.00, 5.00, 'pza', true, false, '2026-07-29T16:27:44.988Z'),
+('prod_011', 'GEL-EGO', '5707406653117', 'GEL EGO', 'GEL EGO 200ml', 'cat_cuidado', 'brand_ego', 5000.00, 8000.00, 19.00, 5.00, 'pza', true, false, '2026-07-29T16:29:24.721Z'),
+('prod_012', 'CRE-DEN', '7891150083899', 'CREMA DENTAL', 'CREMA DENTAL 80g', 'cat_cuidado', 'br_colgate', 10000.00, 15000.00, 30.00, 5.00, 'pza', true, false, '2026-07-29T16:30:55.843Z'),
+('prod_014', 'HAR-MAI-BLA', '7702084137520', 'HARINA DE  MAÍZ BLANCO', 'HARINA DE  MAÍZ BLANCO 250g', 'cat_abarrotes', 'brand_pan', 1500.00, 3000.00, 25.00, 5.00, 'pza', true, false, '2026-07-29T16:35:45.851Z'),
+('prod_003', 'CAF-LIO', '7702032119639', 'CAFÉ LIOFILIZADO', 'CAFÉ INSTANTÁNEO LIOFILIZADO 170g', 'cat_abarrotes', 'brand_colcafe', 15000.00, 25000.00, 21.00, 5.00, 'pza', true, false, '2026-07-29T16:05:10.634Z'),
+('prod_013', 'ARR-PAR', '7702231300036', 'ARROZ PARBORIZADO', 'ARROZ PARBORIZADO 3000G', 'cat_abarrotes', 'brand_dona_pepa', 18000.00, 31500.00, 25.00, 5.00, 'pza', true, false, '2026-07-29T16:34:10.898Z')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Customers
-INSERT INTO customers (id, name, document, phone, email, address, balance, notes) VALUES
-('cus_001', 'María González', '1.012.345.678', '3101234567', 'maria.g@email.com', 'Calle 100 # 15-20, Bogotá', 0.00, 'Cliente frecuente'),
-('cus_002', 'Juan Pérez', '1.098.765.432', '3159876543', 'juan.p@email.com', 'Av. El Dorado # 68-90, Bogotá', 120000.00, 'Crédito pendiente'),
-('cus_003', 'Ana Martínez', '1.044.556.677', '3004455667', 'ana.m@email.com', 'Carrera 7 # 45-12, Bogotá', 0.00, ''),
-('cus_004', 'Carlos Ruiz', '1.022.334.455', '3202233445', 'carlos.r@email.com', 'Cl. 53 # 13-24, Bogotá', 0.00, 'Paga siempre en efectivo'),
-('cus_005', 'Laura Sánchez', '1.066.778.899', '3186677889', 'laura.s@email.com', 'Cra. 15 # 93-60, Bogotá', 0.00, '')
+INSERT INTO customers (id, name, document, phone, email, address, balance, welcome_redemptions, notes) VALUES
+('cus_001', 'María González', '1.012.345.678', '3101234567', 'maria.g@email.com', 'Calle 100 # 15-20, Bogotá', 0.00, 0, 'Cliente frecuente'),
+('cus_002', 'Juan Pérez', '1.098.765.432', '3159876543', 'juan.p@email.com', 'Av. El Dorado # 68-90, Bogotá', 120000.00, 0, 'Crédito pendiente'),
+('cus_003', 'Ana Martínez', '1.044.556.677', '3004455667', 'ana.m@email.com', 'Carrera 7 # 45-12, Bogotá', 0.00, 0, ''),
+('cus_004', 'Carlos Ruiz', '1.022.334.455', '3202233445', 'carlos.r@email.com', 'Cl. 53 # 13-24, Bogotá', 0.00, 0, 'Paga siempre en efectivo'),
+('cus_005', 'Laura Sánchez', '1.066.778.899', '3186677889', 'laura.s@email.com', 'Cra. 15 # 93-60, Bogotá', 0.00, 0, '')
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Suppliers
@@ -309,8 +368,8 @@ INSERT INTO suppliers (id, name, contact, phone, email, address, tax_id, balance
 ON CONFLICT (id) DO NOTHING;
 
 -- Insert Company Settings
-INSERT INTO company_settings (id, name, legal_name, tax_id, address, phone, email, currency, currency_symbol, tax_rate, logo_text, theme) VALUES
-(1, 'Supermercado StoreFlow', 'StoreFlow Colombia S.A.S.', '901.234.567-8', 'Calle 100 # 15-20, Bogotá, Colombia', '+57 601 555 1234', 'contacto@storeflow.co', 'COP', '$', 19.00, 'StoreFlow', 'light')
+INSERT INTO company_settings (id, name, legal_name, tax_id, address, phone, email, currency, currency_symbol, tax_rate, logo_text, logo_url, theme) VALUES
+(1, 'Supermercado Optima POS', 'Optima POS Colombia S.A.S.', '901.234.567-8', 'Calle 100 # 15-20, Bogotá, Colombia', '+57 601 555 1234', 'contacto@optimapos.co', 'COP', '$', 19.00, 'Optima POS', '', 'dark')
 ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
     legal_name = EXCLUDED.legal_name,
@@ -319,4 +378,12 @@ ON CONFLICT (id) DO UPDATE SET
     phone = EXCLUDED.phone,
     email = EXCLUDED.email,
     currency = EXCLUDED.currency,
-    tax_rate = EXCLUDED.tax_rate;
+    tax_rate = EXCLUDED.tax_rate,
+    logo_text = EXCLUDED.logo_text;
+
+-- Insert Promotions
+INSERT INTO promotions (id, name, code, type, target, target_id, value, min_purchase_amount, requires_registered_customer, max_redemptions_per_customer, is_welcome_promo, active, usage_count) VALUES
+('promo_2x1_aceite', '2x1 en Aceite de Oliva 500ml', NULL, 'buy_x_get_y', 'product', 'prod_001', 2.00, 0.00, false, NULL, false, true, 14),
+('promo_15_lacteos', '15% de Descuento en Lácteos', NULL, 'percentage', 'category', 'cat_lacteos', 15.00, 0.00, false, NULL, false, true, 8),
+('promo_cupon_bienvenida', 'Cupón Bienvenida -$5.000', 'BIENVENIDA5K', 'fixed', 'all', NULL, 5000.00, 30000.00, true, 3, true, true, 3)
+ON CONFLICT (id) DO NOTHING;

@@ -42,6 +42,7 @@ export const settingsModel = {
       currency_symbol: s.currencySymbol,
       tax_rate: s.taxRate,
       logo_text: s.logoText,
+      logo_url: s.logoUrl !== undefined ? s.logoUrl : null,
       theme: s.theme,
     });
   },

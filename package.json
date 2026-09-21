@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n \"backend,frontend\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:all": "npm run dev",
     "dev:backend": "tsx src/server/index.ts",
     "dev:frontend": "vite",
     "server": "tsx src/server/index.ts",
@@ -16,6 +17,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
     "@supabase/supabase-js": "^2.57.4",
+    "@types/multer": "^2.2.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.6",
     "date-fns": "^4.4.0",
@@ -23,6 +25,7 @@
     "framer-motion": "^12.42.2",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.344.0",
+    "multer": "^2.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.83.0",

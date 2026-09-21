@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Building2, Palette, Database, Moon, Sun, RotateCcw, Save, Users, Plus, Edit2, Trash2, UserCheck, UserX, Search, Shield, Upload, Image } from 'lucide-react';
+import {
+  Settings, Building2, Palette, Database, Moon, Sun, RotateCcw, Save, Users, Plus,
+  Edit2, Trash2, UserCheck, UserX, Search, Shield, Upload, Printer, Download, FileSpreadsheet,
+  HardDrive, CheckCircle2, Zap
+} from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';
 import { Button } from '@/views/components/ui/Button';
@@ -11,6 +15,8 @@ import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
 import { cn, generateId } from '@/lib/utils';
 import { storageService } from '@/services/storageService';
+import { exportCompleteBackup, exportProductsToCSV, exportSalesToCSV } from '@/lib/exportUtils';
+import type { User, Role } from '@/models/types';
 
 export function SettingsPage() {
   const { db, updateSettings, setTheme, resetData, currentUser, upsertUser, deleteUser } = useStore();
@@ -72,11 +78,89 @@ export function SettingsPage() {
     setShowReset(false);
   };
 
+  const handleTestPrint = () => {
+    const printWindow = window.open('', '_blank', 'width=350,height=600');
+    if (!printWindow) {
+      toast.error('Ventana emergente bloqueada', 'Permite las ventanas emergentes en tu navegador para imprimir la prueba');
+      return;
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Ticket de Prueba - Optima POS</title>
+        <style>
+          @page { margin: 0; size: 80mm auto; }
+          body { font-family: monospace; font-size: 12px; margin: 10px; color: #000; }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .divider { border-top: 1px dashed #000; margin: 8px 0; }
+          .flex { display: flex; justify-content: space-between; }
+        </style>
+      </head>
+      <body>
+        <div class="center bold">${form.name || 'Optima POS'}</div>
+        <div class="center">${form.legalName || ''}</div>
+        <div class="center">${form.taxId ? 'NIT/RFC: ' + form.taxId : ''}</div>
+        <div class="center">${form.address || ''}</div>
+        <div class="center">${form.phone ? 'Tel: ' + form.phone : ''}</div>
+        <div class="divider"></div>
+        <div class="center bold">*** COMPROBANTE DE PRUEBA ***</div>
+        <div class="center">${new Date().toLocaleString()}</div>
+        <div class="divider"></div>
+        <div class="flex"><span>1x PRODUCTO PRUEBA</span><span>$10.000</span></div>
+        <div class="flex"><span>1x ARTÍCULO DEMO</span><span>$5.000</span></div>
+        <div class="divider"></div>
+        <div class="flex bold"><span>TOTAL</span><span>$15.000</span></div>
+        <div class="divider"></div>
+        <div class="center">¡Impresora térmica configurada correctamente!</div>
+        <div class="center">Optima POS Cloud v1.0</div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
+  const handleExportBackup = () => {
+    try {
+      exportCompleteBackup(db);
+      toast.success('Respaldo generado', 'Se descargó el archivo JSON con todas las tablas del sistema');
+    } catch {
+      toast.error('Error', 'No se pudo generar el respaldo');
+    }
+  };
+
+  const handleExportProducts = () => {
+    try {
+      exportProductsToCSV(db.products, db.categories, db.brands);
+      toast.success('Catálogo exportado', 'Se descargó el archivo CSV compatible con Excel');
+    } catch {
+      toast.error('Error', 'No se pudo exportar el catálogo');
+    }
+  };
+
+  const handleExportSales = () => {
+    try {
+      exportSalesToCSV(db.sales);
+      toast.success('Ventas exportadas', 'Se descargó el historial de ventas en formato CSV');
+    } catch {
+      toast.error('Error', 'No se pudo exportar las ventas');
+    }
+  };
+
   const tabs = [
     { id: 'empresa', label: 'Empresa', icon: Building2 },
     { id: 'usuarios', label: 'Usuarios / Cajeros', icon: Users },
     { id: 'apariencia', label: 'Apariencia', icon: Palette },
-    { id: 'datos', label: 'Datos', icon: Database },
+    { id: 'impresion', label: 'Impresión / Tickets', icon: Printer },
+    { id: 'datos', label: 'Datos & Respaldo', icon: Database },
   ];
   const [tab, setTab] = useState('empresa');
 
@@ -476,49 +560,164 @@ export function SettingsPage() {
             </Card>
           )}
 
+          {tab === 'impresion' && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle>Configuración de Impresora Térmica</CardTitle>
+                    <p className="text-xs text-muted mt-1">Ajusta el formato de los comprobantes y prueba la comunicación con tu impresora</p>
+                  </div>
+                  <Button onClick={handleTestPrint}>
+                    <Printer className="h-4 w-4" /> Imprimir Ticket de Prueba
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 rounded-xl border border-border bg-surface-2 space-y-2">
+                      <p className="text-sm font-semibold text-text flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-success" /> Formato de Papel Soportado
+                      </p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        Optima POS está optimizado para rollos de papel térmico estándar de <strong>80mm</strong> (supermercados) y <strong>58mm</strong> (impresoras compactas / mini-impresoras bluetooth o USB).
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-border bg-surface-2 space-y-2">
+                      <p className="text-sm font-semibold text-text flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-success" /> Encabezado y Pie de Ticket
+                      </p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        El nombre, NIT/RFC, dirección y teléfono configurados en la pestaña <strong>Empresa</strong> se imprimen automáticamente en cada comprobante térmico.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Kiosk Mode Tutorial */}
+                  <div className="p-4 rounded-xl border border-primary/30 bg-primary/5 space-y-3">
+                    <div className="flex items-center gap-2 text-primary font-semibold text-sm">
+                      <Zap className="h-4 w-4" /> Impresión Silenciosa Inmediata (Modo Kiosk - 0 Clics)
+                    </div>
+                    <p className="text-xs text-text leading-relaxed">
+                      Para que los recibos se impriman <strong>automáticamente sin abrir el diálogo de confirmación de Windows</strong> cada vez que cobras en el POS:
+                    </p>
+                    <ol className="list-decimal list-inside text-xs text-muted space-y-1.5 pl-1">
+                      <li>Establece tu impresora térmica como la <strong>Impresora Predeterminada</strong> de Windows.</li>
+                      <li>En la ventana de impresión del navegador, desmarca la casilla <em>"Encabezados y pies de página"</em> y selecciona márgenes en <em>"Ninguno"</em>.</li>
+                      <li>Inicia el sistema mediante el script <code>Iniciar_OptimaPOS.bat</code> (que ya incluye el modo de aplicación directa) o añade el comando <code>--kiosk-printing</code> al acceso directo del navegador.</li>
+                    </ol>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {tab === 'datos' && (
-            <Card>
-              <CardHeader><CardTitle>Gestión de datos</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-                  {[
-                    { label: 'Usuarios', value: db.users.length },
-                    { label: 'Productos', value: db.products.length },
-                    { label: 'Ventas', value: db.sales.length },
-                    { label: 'Clientes', value: db.customers.length },
-                    { label: 'Compras', value: db.purchases.length },
-                  ].map((s) => (
-                    <div key={s.label} className="p-4 rounded-xl bg-surface-2 text-center">
-                      <p className="font-display font-bold text-2xl text-text">{s.value}</p>
-                      <p className="text-xs text-muted">{s.label}</p>
+            <div className="space-y-6">
+              {/* Copias de Seguridad y Respaldo a USB */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <HardDrive className="h-5 w-5 text-primary" /> Copias de Seguridad y Respaldo a USB
+                  </CardTitle>
+                  <p className="text-xs text-muted mt-1">
+                    Descarga copias de seguridad de tus datos para guardarlas en una memoria USB o abrirlas en Excel
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Backup JSON */}
+                    <div className="p-4 rounded-xl border border-border bg-surface-2/60 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-text font-semibold text-sm mb-1">
+                          <Download className="h-4 w-4 text-primary" /> Respaldo Completo (JSON)
+                        </div>
+                        <p className="text-xs text-muted">
+                          Copia íntegra de productos, ventas, compras, clientes, proveedores y sesiones de caja con fecha y hora.
+                        </p>
+                      </div>
+                      <Button onClick={handleExportBackup} size="sm" className="w-full">
+                        <Download className="h-3.5 w-3.5" /> Descargar Backup
+                      </Button>
                     </div>
-                  ))}
-                </div>
 
-                <div className="p-4 rounded-xl border border-danger/20 bg-danger/5">
-                  <div className="flex items-start gap-3">
-                    <RotateCcw className="h-5 w-5 text-danger shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-text">Restablecer datos</p>
-                      <p className="text-xs text-muted mt-1">Vuelve a los datos de demostración. Se perderán todos los cambios.</p>
+                    {/* Export Products */}
+                    <div className="p-4 rounded-xl border border-border bg-surface-2/60 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-text font-semibold text-sm mb-1">
+                          <FileSpreadsheet className="h-4 w-4 text-success" /> Catálogo a Excel (CSV)
+                        </div>
+                        <p className="text-xs text-muted">
+                          Exporta todos los productos con SKU, códigos de barra, costos, precios de venta y existencias actuales.
+                        </p>
+                      </div>
+                      <Button onClick={handleExportProducts} variant="outline" size="sm" className="w-full">
+                        <FileSpreadsheet className="h-3.5 w-3.5" /> Exportar Productos
+                      </Button>
                     </div>
-                    <Button variant="danger" size="sm" onClick={() => setShowReset(true)}>Restablecer</Button>
-                  </div>
-                </div>
 
-                <div className="p-4 rounded-xl bg-surface-2">
-                  <p className="text-sm font-medium text-text mb-2">Sesión actual</p>
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold">{currentUser?.name.charAt(0)}</div>
-                    <div>
-                      <p className="text-sm font-medium text-text">{currentUser?.name}</p>
-                      <p className="text-xs text-muted">{currentUser?.email}</p>
+                    {/* Export Sales */}
+                    <div className="p-4 rounded-xl border border-border bg-surface-2/60 flex flex-col justify-between space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 text-text font-semibold text-sm mb-1">
+                          <FileSpreadsheet className="h-4 w-4 text-info" /> Historial de Ventas (CSV)
+                        </div>
+                        <p className="text-xs text-muted">
+                          Exporta el reporte de ventas con folios, fechas, clientes, método de pago, IVA y totales recaudados.
+                        </p>
+                      </div>
+                      <Button onClick={handleExportSales} variant="outline" size="sm" className="w-full">
+                        <FileSpreadsheet className="h-3.5 w-3.5" /> Exportar Ventas
+                      </Button>
                     </div>
-                    <Badge variant="primary" className="ml-auto capitalize">{currentUser?.role}</Badge>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+
+              {/* Estadísticas y Reset */}
+              <Card>
+                <CardHeader><CardTitle>Métricas de la Base de Datos</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    {[
+                      { label: 'Usuarios', value: db.users.length },
+                      { label: 'Productos', value: db.products.length },
+                      { label: 'Ventas', value: db.sales.length },
+                      { label: 'Clientes', value: db.customers.length },
+                      { label: 'Compras', value: db.purchases.length },
+                    ].map((s) => (
+                      <div key={s.label} className="p-4 rounded-xl bg-surface-2 text-center">
+                        <p className="font-display font-bold text-2xl text-text">{s.value}</p>
+                        <p className="text-xs text-muted">{s.label}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-4 rounded-xl border border-danger/20 bg-danger/5">
+                    <div className="flex items-start gap-3">
+                      <RotateCcw className="h-5 w-5 text-danger shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-text">Restablecer datos</p>
+                        <p className="text-xs text-muted mt-1">Vuelve a los datos de demostración. Se perderán todos los cambios locales.</p>
+                      </div>
+                      <Button variant="danger" size="sm" onClick={() => setShowReset(true)}>Restablecer</Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-surface-2">
+                    <p className="text-sm font-medium text-text mb-2">Sesión actual</p>
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-white font-semibold">{currentUser?.name.charAt(0)}</div>
+                      <div>
+                        <p className="text-sm font-medium text-text">{currentUser?.name}</p>
+                        <p className="text-xs text-muted">{currentUser?.email}</p>
+                      </div>
+                      <Badge variant="primary" className="ml-auto capitalize">{currentUser?.role}</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           )}
         </motion.div>
       </div>
@@ -541,7 +740,7 @@ export function SettingsPage() {
           <Input
             label="Correo electrónico *"
             type="email"
-            placeholder="ejemplo@storeflow.com"
+            placeholder="ejemplo@optimapos.com"
             value={userForm.email}
             onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
             required

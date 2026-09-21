@@ -13,7 +13,7 @@ export interface R2Config {
   publicDomain: string;
 }
 
-const DEFAULT_R2_CONFIG: R2Config = {
+export const DEFAULT_R2_CONFIG: R2Config = {
   accountId: import.meta.env.VITE_R2_ACCOUNT_ID || 'demo_account_id',
   accessKeyId: import.meta.env.VITE_R2_ACCESS_KEY_ID || 'demo_access_key',
   secretAccessKey: import.meta.env.VITE_R2_SECRET_ACCESS_KEY || 'demo_secret_key',

@@ -1,6 +1,6 @@
-# 🛒 Optima POS v2.0 — Sistema de Punto de Venta, Inventarios & Gestión Empresarial
+# 🛒 Optima POS v1.0 — Sistema de Punto de Venta, Inventarios & Gestión Empresarial
 
-**Optima POS** (anteriormente StoreFlow) es una plataforma web moderna, modular y de alto rendimiento de Punto de Venta (POS), control de inventarios, almacenamiento de comprobantes en la nube, gestión de caja y auditoría en tiempo real diseñada para comercios minoristas y de consumo masivo (minimarkets, tiendas de abarrotes, boutiques, ferreterías).
+**Optima POS** (anteriormente StoreFlow) es un sistema POS Cloud moderno, modular y de alto rendimiento de Punto de Venta (POS), control de inventarios, almacenamiento de comprobantes en la nube, gestión de caja y auditoría en tiempo real diseñado para comercios minoristas y de consumo masivo (minimarkets, tiendas de abarrotes, boutiques, ferreterías).
 
 Ofrece una **arquitectura desacoplada en 4 capas (MVC + Service Layer)** respaldada por un **Servidor Backend Node.js con Express.js**, integración con **Cloudflare R2 Object Storage** y un **Motor de Sincronización Resiliente Offline-First**, garantizando que el negocio siga vendiendo sin interrupción aunque se corte el internet.
 
@@ -10,9 +10,9 @@ Ofrece una **arquitectura desacoplada en 4 capas (MVC + Service Layer)** respald
 
 | Documento | Descripción |
 |---|---|
-| [`MANUAL_IDENTIDAD_MARCA.md`](MANUAL_IDENTIDAD_MARCA.md) | Manual de Identidad de Marca y Estándares Gráficos v2.0 |
+| [`MANUAL_IDENTIDAD_MARCA.md`](MANUAL_IDENTIDAD_MARCA.md) | Manual de Identidad de Marca y Estándares Gráficos v1.0 |
 | [`ARCHITECTURE.md`](ARCHITECTURE.md) | Arquitectura MVC + Service Layer + Cloudflare R2 |
-| [`DOCUMENTO_TECNICO.md`](DOCUMENTO_TECNICO.md) | Documento técnico detallado v2.0 |
+| [`DOCUMENTO_TECNICO.md`](DOCUMENTO_TECNICO.md) | Documento técnico detallado v1.0 |
 | [`GUIA_PRESENTACION.md`](GUIA_PRESENTACION.md) | Guía para demostraciones técnicas |
 
 ---
@@ -98,4 +98,4 @@ npm run dev
 
 ---
 
-*Optima POS v2.0 — Agosto 2026*
+*Optima POS v1.0 — Agosto 2026*

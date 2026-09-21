@@ -16,6 +16,7 @@ import { useCallback } from 'react';
 import type { AppDatabase, User, Product, Category, Brand, InventoryAdjustment, CashMovementType, PriceCostAuditLog } from '../models/types';
 import { generateId } from '../lib/utils';
 import { productService } from '../services/productService';
+import { priceAuditService } from '../services/priceAuditService';
 
 // Firma de función para registrar movimientos financieros o de inventario en la sesión de caja activa
 type LogMovementFn = (
@@ -84,21 +85,19 @@ export function useProductController(
     (p: Product) => {
       let isNew = false;
       let oldProduct: Product | undefined;
+      let auditToInsert: PriceCostAuditLog | null = null;
 
       setDb((prev) => {
         oldProduct = prev.products.find((x) => x.id === p.id);
         isNew = !oldProduct;
-        const products = oldProduct
-          ? prev.products.map((x) => (x.id === p.id ? p : x))
-          : [...prev.products, p];
+        const products = isNew
+          ? [...prev.products, p]
+          : prev.products.map((item) => (item.id === p.id ? p : item));
 
         let priceCostLogs = prev.priceCostLogs || [];
 
-        // Generar entrada de auditoría de cambio de precio/costo si fue modificado
-        if (
-          oldProduct &&
-          (oldProduct.price !== p.price || oldProduct.cost !== p.cost)
-        ) {
+        // Si es una edición y cambiaron el precio o el costo, registrar auditoría
+        if (!isNew && oldProduct && (oldProduct.price !== p.price || oldProduct.cost !== p.cost)) {
           const auditEntry: PriceCostAuditLog = {
             id: generateId('pclog'),
             productId: p.id,
@@ -113,11 +112,16 @@ export function useProductController(
             createdAt: new Date().toISOString(),
           };
 
+          auditToInsert = auditEntry;
           priceCostLogs = [auditEntry, ...priceCostLogs];
         }
 
         return { ...prev, products, priceCostLogs };
       });
+
+      if (auditToInsert) {
+        priceAuditService.insertPriceAuditLog(auditToInsert).catch(console.error);
+      }
 
       if (isNew) {
         logSessionMovement('producto', 0, `Nuevo producto registrado: ${p.name}`, p.id, {

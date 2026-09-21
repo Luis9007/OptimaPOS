@@ -35,6 +35,7 @@ export const salesService = {
       cashReceived: Number(s.cash_received),
       change: Number(s.change),
       status: s.status,
+      receiptUrl: s.receipt_url || undefined,
       userId: s.user_id,
       userName: s.user_name,
       createdAt: s.created_at,
@@ -49,6 +50,13 @@ export const salesService = {
           subtotal: Number(si.subtotal),
         })),
     }));
+  },
+
+  /**
+   * Actualiza la URL del comprobante de venta en Supabase.
+   */
+  async updateReceiptUrl(saleId: string, receiptUrl: string): Promise<void> {
+    await salesModel.updateReceiptUrl(saleId, receiptUrl);
   },
 
   /**
@@ -98,11 +106,41 @@ export const salesService = {
   },
 
   /**
-   * Anula una venta a través de salesModel.
+   * Anula una venta a través de salesModel y restaura el inventario y cartera en Supabase.
    */
-  async voidSale(id: string): Promise<void> {
+  async voidSale(id: string, sale?: Sale, products?: Product[], currentCustomerBalance?: number): Promise<void> {
     try {
+      // 1. Marcar venta como anulada en Supabase
       await salesModel.updateSaleStatus(id, 'anulada');
+
+      // 2. Restaurar stock en Supabase
+      if (sale && products) {
+        for (const item of sale.items) {
+          const prod = products.find((p) => p.id === item.productId);
+          if (prod) {
+            const restoredStock = prod.stock + item.quantity;
+            await productModel.updateStock(prod.id, restoredStock);
+            await productModel.insertAdjustment({
+              id: `adj_void_${Date.now()}_${item.productId.slice(-4)}`,
+              productId: prod.id,
+              productName: prod.name,
+              previousStock: prod.stock,
+              newStock: restoredStock,
+              reason: `Reversión por anulación de venta ${sale.reference}`,
+              type: 'entrada',
+              userId: sale.userId,
+              userName: sale.userName,
+              createdAt: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      // 3. Revertir saldo a crédito si la venta fue a crédito
+      if (sale && sale.paymentMethod === 'credito' && sale.customerId && currentCustomerBalance !== undefined) {
+        const newBalance = Math.max(0, currentCustomerBalance - sale.total);
+        await customerModel.updateBalance(sale.customerId, newBalance);
+      }
     } catch (err) {
       console.error('Error voiding sale:', err);
     }

@@ -61,6 +61,7 @@ export interface StoreContextValue {
   deleteSupplier: (id: string) => void;
   addPurchase: (p: Omit<Purchase, 'id' | 'reference' | 'createdAt'>) => void;
   receivePurchase: (id: string) => void;
+  cancelPurchase: (id: string) => void;
 
   // Punto de Venta (SalesController ➔ salesService)
   addSale: (s: Omit<Sale, 'id' | 'reference' | 'createdAt' | 'status'>) => Sale;

@@ -45,6 +45,8 @@ import { purchaseService } from '../services/purchaseService';
 import { salesService } from '../services/salesService';
 import { settingsService } from '../services/settingsService';
 import { syncService } from '../services/syncService';
+import { promotionService } from '../services/promotionService';
+import { priceAuditService } from '../services/priceAuditService';
 
 // Importación de la Capa de Controladores de Dominio (State & Business Logic)
 import { useAuthController } from './AuthController';
@@ -55,14 +57,15 @@ import { usePurchaseController } from './PurchaseController';
 import { useSalesController } from './SalesController';
 import { useSettingsController } from './SettingsController';
 
-const STORAGE_KEY = 'storeflow_local_db_v2';
+const STORAGE_KEY = 'optima_pos_local_db_v1';
+const LEGACY_STORAGE_KEY = 'storeflow_local_db_v2';
 
 /**
  * Carga el estado de la base de datos desde `localStorage` en caso de no contar con conexión a Supabase.
  */
 function loadDbFromStorage(): AppDatabase {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
     return raw ? (JSON.parse(raw) as AppDatabase) : structuredClone(seedDatabase);
   } catch {
     return structuredClone(seedDatabase);
@@ -150,7 +153,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deleteSupplier,
     addPurchase,
     receivePurchase,
-  } = usePurchaseController(db, setDb, logSessionMovement, addLog);
+    cancelPurchase,
+  } = usePurchaseController(db, setDb, currentUser, logSessionMovement, addLog);
 
   // 6. Controlador de Dominio: Ventas y Facturación
   const {
@@ -184,6 +188,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sales,
           { cashSessions },
           { settings, logs },
+          promotions,
+          priceCostLogs,
         ] = await Promise.all([
           authService.fetchUsers(),
           productService.fetchProductsData(),
@@ -192,6 +198,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           salesService.fetchSalesData(),
           cashService.fetchCashData(),
           settingsService.fetchSettingsAndLogs(),
+          promotionService.fetchPromotions(),
+          priceAuditService.fetchPriceAuditLogs(),
         ]);
 
         if (!isMounted) return;
@@ -208,8 +216,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           sales,
           cashSessions,
           adjustments,
-          promotions: seedDatabase.promotions,
-          priceCostLogs: seedDatabase.priceCostLogs,
+          promotions: promotions.length > 0 ? promotions : seedDatabase.promotions,
+          priceCostLogs: priceCostLogs.length > 0 ? priceCostLogs : seedDatabase.priceCostLogs,
           settings,
           logs,
         });
@@ -285,6 +293,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ...prev, promotions: updated };
       });
       addLog('promotion.upsert', `Promoción guardada: ${p.name}`);
+      promotionService.upsertPromotion(p).catch(console.error);
     },
     [addLog]
   );
@@ -299,19 +308,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         return { ...prev, promotions: list.filter((p) => p.id !== id) };
       });
+      promotionService.deletePromotion(id).catch(console.error);
     },
     [addLog]
   );
 
   const togglePromotionActive = useCallback(
     (id: string) => {
+      let nextActive = false;
       setDb((prev) => {
         const list = prev.promotions || [];
+        const found = list.find((p) => p.id === id);
+        if (found) nextActive = !found.active;
         return {
           ...prev,
           promotions: list.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
         };
       });
+      promotionService.togglePromotionActive(id, nextActive).catch(console.error);
     },
     []
   );
@@ -340,6 +354,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     deleteSupplier,
     addPurchase,
     receivePurchase,
+    cancelPurchase,
     addSale,
     voidSale,
     openCash,

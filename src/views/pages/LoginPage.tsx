@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Sparkles, ShieldCheck, Zap } from 'lucide-react';
@@ -8,12 +8,12 @@ import { Button } from '@/views/components/ui/Button';
 import { Input } from '@/views/components/ui/Input';
 
 const demoAccounts = [
-  { role: 'Supervisor', email: 'supervisor@storeflow.com', password: 'super123', color: 'from-info to-blue-600' },
-  { role: 'Cajero', email: 'cajero@storeflow.com', password: 'cajero123', color: 'from-accent to-orange-500' },
+  { role: 'Supervisor', email: 'supervisor@optimapos.com', password: 'super123', color: 'from-info to-blue-600' },
+  { role: 'Cajero', email: 'cajero@optimapos.com', password: 'cajero123', color: 'from-accent to-orange-500' },
 ];
 
 export function LoginPage() {
-  const { login, currentUser } = useStore();
+  const { login, currentUser, db } = useStore();
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -22,6 +22,16 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Garantizar que la pantalla de inicio de sesión siempre esté en modo oscuro
+  useEffect(() => {
+    document.documentElement.classList.add('dark');
+    return () => {
+      if (db.settings?.theme && db.settings.theme !== 'dark') {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+  }, [db.settings?.theme]);
 
   if (currentUser) return <Navigate to="/app" replace />;
 
@@ -49,7 +59,7 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex dark bg-bg text-text selection:bg-primary selection:text-white">
       {/* Left — Brand panel */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-sidebar">
         <div className="absolute inset-0 sf-gradient-brand opacity-50" />
@@ -76,7 +86,7 @@ export function LoginPage() {
             </div>
             <div>
               <p className="font-display font-bold text-2xl tracking-tight">Optima POS</p>
-              <p className="text-xs text-teal-300 font-semibold tracking-wide">Plataforma Web de Gestión Comercial & POS</p>
+              <p className="text-xs text-teal-300 font-semibold tracking-wide">Sistema POS Cloud de Gestión Comercial</p>
             </div>
           </div>
 
@@ -87,7 +97,7 @@ export function LoginPage() {
               transition={{ duration: 0.6 }}
               className="font-display font-bold text-3xl sm:text-4xl leading-tight"
             >
-              Plataforma web moderna, modular y de alto rendimiento.
+              Sistema POS Cloud moderno, modular y de alto rendimiento.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -154,7 +164,7 @@ export function LoginPage() {
               <Input
                 type="email"
                 label="Correo electrónico"
-                placeholder="supervisor@storeflow.com"
+                placeholder="supervisor@optimapos.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"

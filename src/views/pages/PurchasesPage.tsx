@@ -15,27 +15,8 @@ import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
 import { formatCurrency, formatDate, generateSequentialId, generateSkuFromName, cn } from '@/lib/utils';
+import { playSuccessBeep, playErrorBeep } from '@/lib/sound';
 import type { Purchase, PurchaseItem, Product, Supplier, Brand } from '@/models/types';
-
-const playBeep = () => {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(987.77, ctx.currentTime);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
-  } catch {
-    // Ignore audio errors
-  }
-};
 
 interface CartItem {
   productId: string;
@@ -45,7 +26,7 @@ interface CartItem {
 }
 
 export function PurchasesPage() {
-  const { db, addPurchase, receivePurchase, upsertProduct, upsertSupplier, upsertBrand, currentUser } = useStore();
+  const { db, addPurchase, receivePurchase, cancelPurchase, upsertProduct, upsertSupplier, upsertBrand, currentUser } = useStore();
   const toast = useToast();
   const sym = db.settings.currencySymbol;
   const canCreate = canPerformAction(currentUser?.role, 'purchase.create');
@@ -55,6 +36,7 @@ export function PurchasesPage() {
   const [showForm, setShowForm] = useState(false);
   const [viewing, setViewing] = useState<Purchase | null>(null);
   const [receiveId, setReceiveId] = useState<string | null>(null);
+  const [cancelId, setCancelId] = useState<string | null>(null);
 
   // Form state
   const [supplierId, setSupplierId] = useState('');
@@ -248,7 +230,6 @@ export function PurchasesPage() {
   const handleBarcodeScanned = (code: string) => {
     const cleanCode = code.trim();
     if (!cleanCode) return;
-    playBeep();
     setShowScanner(false);
 
     const match = db.products.find(
@@ -256,12 +237,21 @@ export function PurchasesPage() {
     );
 
     if (match) {
+      playSuccessBeep();
       addItem(match.id, match.name, match.cost);
       toast.success('Producto encontrado', `"${match.name}" agregado a la compra`);
     } else {
+      playErrorBeep();
       toast.info('Producto nuevo', `Código ${cleanCode} no registrado. Registra el nuevo producto.`);
       openQuickProductForm(cleanCode);
     }
+  };
+
+  const handleCancel = () => {
+    if (!cancelId) return;
+    cancelPurchase(cancelId);
+    toast.success('Orden de compra cancelada', 'El estado de la compra ha sido actualizado');
+    setCancelId(null);
   };
 
   const statusConfig = {
@@ -300,6 +290,16 @@ export function PurchasesPage() {
           {p.status === 'pendiente' && canReceive && (
             <Button size="sm" onClick={(e) => { e.stopPropagation(); setReceiveId(p.id); }}>
               <CheckCircle2 className="h-3.5 w-3.5" /> Recibir
+            </Button>
+          )}
+          {p.status === 'pendiente' && canReceive && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-danger hover:bg-danger/10 border-danger/30"
+              onClick={(e) => { e.stopPropagation(); setCancelId(p.id); }}
+            >
+              <XCircle className="h-3.5 w-3.5" /> Cancelar
             </Button>
           )}
         </div>
@@ -776,6 +776,22 @@ export function PurchasesPage() {
         <p className="text-sm text-muted">¿Confirmas que has recibido los productos físicamente? Se incrementará el stock del inventario y se actualizarán los costos de los productos.</p>
       </Dialog>
 
+      {/* Cancel confirm */}
+      <Dialog
+        open={!!cancelId}
+        onClose={() => setCancelId(null)}
+        title="Cancelar orden de compra"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setCancelId(null)}>Volver</Button>
+            <Button variant="danger" onClick={handleCancel}>Confirmar cancelación</Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted">¿Estás seguro de cancelar esta orden de compra? La orden quedará archivada como "Cancelada" en el historial y no afectará el inventario.</p>
+      </Dialog>
+
       {/* Camera Scanner Modal */}
       <PurchaseScannerModal open={showScanner} onClose={() => setShowScanner(false)} onScan={handleBarcodeScanned} />
     </div>
@@ -805,7 +821,7 @@ function PurchaseScannerModal({ open, onClose, onScan }: { open: boolean; onClos
           },
           () => {}
         );
-      } catch (err: any) {
+      } catch {
         if (isMounted) {
           setErrorMsg('No se pudo acceder a la cámara. Asegúrate de conceder permisos.');
         }

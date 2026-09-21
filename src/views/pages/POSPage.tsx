@@ -14,6 +14,7 @@ import { Dialog } from '@/views/components/ui/Dialog';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { formatCurrency, formatDateTime, generateSequentialId, cn } from '@/lib/utils';
 import { evaluatePromotions } from '@/lib/promoEngine';
+import { playSuccessBeep, playErrorBeep } from '@/lib/sound';
 import type { SaleItem, PaymentMethod, Sale, Customer } from '@/models/types';
 
 interface CartLine {
@@ -24,26 +25,6 @@ interface CartLine {
   discount: number;
   stock: number;
 }
-
-const playBeep = () => {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(987.77, ctx.currentTime);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
-  } catch {
-    // Ignore audio context errors
-  }
-};
 
 export function POSPage() {
   const { db, currentUser, addSale, upsertCustomer, activeCashSession, openCash } = useStore();
@@ -143,16 +124,18 @@ export function POSPage() {
     );
 
     if (!product) {
+      playErrorBeep();
       toast.error('Producto no encontrado', `Código escaneado: "${code}"`);
       return;
     }
 
     if (product.stock <= 0) {
+      playErrorBeep();
       toast.error('Sin stock', `${product.name} no tiene existencias`);
       return;
     }
 
-    playBeep();
+    playSuccessBeep();
     addToCart(product);
     toast.success('Producto agregado', `${product.name} — ${formatCurrency(product.price, sym)}`);
   };
@@ -169,24 +152,27 @@ export function POSPage() {
 
       if (exactMatch) {
         if (exactMatch.stock <= 0) {
+          playErrorBeep();
           toast.error('Sin stock', `${exactMatch.name} no tiene existencias`);
           return;
         }
-        playBeep();
+        playSuccessBeep();
         addToCart(exactMatch);
         toast.success('Producto agregado', exactMatch.name);
         setSearch('');
       } else if (filteredProducts.length === 1) {
         const prod = filteredProducts[0];
         if (prod.stock <= 0) {
+          playErrorBeep();
           toast.error('Sin stock', `${prod.name} no tiene existencias`);
           return;
         }
-        playBeep();
+        playSuccessBeep();
         addToCart(prod);
         toast.success('Producto agregado', prod.name);
         setSearch('');
       } else {
+        playErrorBeep();
         toast.error('No encontrado', `No se encontró coincidencia para "${search}"`);
       }
     }
@@ -1253,7 +1239,7 @@ function CameraScannerModal({
           },
           () => {}
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error al iniciar el escáner de cámara:', err);
         setErrorMsg('No se pudo acceder a la cámara. Revisa los permisos de tu navegador.');
       }
@@ -1272,11 +1258,13 @@ function CameraScannerModal({
         } else {
           try {
             scannerRef.current.clear();
-          } catch {}
+          } catch {
+            // Ignorar error al limpiar escáner
+          }
         }
       }
     };
-  }, [open]);
+  }, [open, onScan]);
 
   return (
     <Dialog open={open} onClose={onClose} title="Escáner de Código de Barras con Cámara" size="md">

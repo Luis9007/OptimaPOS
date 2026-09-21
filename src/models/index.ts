@@ -14,3 +14,5 @@ export { cashModel } from './cashModel';
 export { customerModel } from './customerModel';
 export { purchaseModel } from './purchaseModel';
 export { settingsModel } from './settingsModel';
+export { promotionModel } from './promotionModel';
+export { priceAuditModel } from './priceAuditModel';

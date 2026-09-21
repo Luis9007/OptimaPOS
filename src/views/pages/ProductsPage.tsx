@@ -15,27 +15,8 @@ import { DataTable, type Column } from '@/views/components/ui/DataTable';
 import { Breadcrumb } from '@/views/components/ui/Breadcrumb';
 import { PageHeader } from '@/views/components/ui/PageHeader';
 import { formatCurrency, generateSequentialId, generateSkuFromName, cn } from '@/lib/utils';
+import { playSuccessBeep } from '@/lib/sound';
 import type { Product, Category, Brand } from '@/models/types';
-
-const playBeep = () => {
-  try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(987.77, ctx.currentTime);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.12);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.12);
-  } catch {
-    // Ignore audio errors
-  }
-};
 
 const PRODUCT_UNITS = [
   { value: 'pza', label: 'Pieza (pza)' },
@@ -174,7 +155,7 @@ export function ProductsPage() {
     const cleanCode = code.trim();
     if (!cleanCode || !editing) return;
 
-    playBeep();
+    playSuccessBeep();
     setShowProductScanner(false);
     setIsSearchingExternal(true);
 
@@ -803,7 +784,7 @@ function ProductScannerModal({
           },
           () => {}
         );
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error al iniciar el escáner de producto:', err);
         setErrorMsg('No se pudo acceder a la cámara. Revisa los permisos de tu navegador.');
       }
@@ -822,11 +803,13 @@ function ProductScannerModal({
         } else {
           try {
             scannerRef.current.clear();
-          } catch {}
+          } catch {
+            // Ignorar error al limpiar escáner
+          }
         }
       }
     };
-  }, [open]);
+  }, [open, onScan]);
 
   return (
     <Dialog open={open} onClose={onClose} title="Escanear Código para Nuevo Producto" size="md">

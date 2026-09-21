@@ -11,7 +11,6 @@
 import type { AppDatabase, Product, Sale, SaleItem, CashSession, Purchase, Promotion, PriceCostAuditLog } from './types';
 import { generateId } from '../lib/utils';
 
-const now = new Date();
 const iso = (d: Date) => d.toISOString();
 
 /**
@@ -233,7 +232,7 @@ const settings = {
   taxRate: 19,
   logoText: 'Don Pedro',
   logoUrl: '',
-  theme: 'light' as const,
+  theme: 'dark' as const,
 };
 
 /** Usuarios de demostración */
@@ -245,8 +244,8 @@ const users = [
 /** Promociones de prueba iniciales */
 const promotions: Promotion[] = [
   {
-    id: 'promo_2x1_coca',
-    name: '2x1 en Coca-Cola 600ml',
+    id: 'promo_2x1_aceite',
+    name: '2x1 en Aceite de Oliva 500ml',
     type: 'buy_x_get_y',
     target: 'product',
     targetId: 'prod_001',
@@ -319,9 +318,9 @@ export const seedDatabase: AppDatabase = {
   products,
   customers,
   suppliers,
-  purchases: [],
-  sales: [],
-  cashSessions: [],
+  purchases,
+  sales,
+  cashSessions,
   adjustments: [],
   promotions,
   priceCostLogs,

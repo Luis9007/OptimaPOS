@@ -22,6 +22,7 @@ export const cashService = {
 
     const mappedMovements: CashMovement[] = movements.map((m) => ({
       id: m.id,
+      sessionId: m.session_id || undefined,
       type: m.type as CashMovementType,
       amount: Number(m.amount),
       concept: m.concept || '',
@@ -41,7 +42,7 @@ export const cashService = {
       closedAt: cs.closed_at,
       userId: cs.user_id,
       userName: cs.user_name,
-      movements: mappedMovements.filter((m) => m.reference === cs.id || true),
+      movements: mappedMovements.filter((m) => m.sessionId === cs.id || m.reference === cs.id),
     }));
 
     return { cashSessions: mappedSessions, cashMovements: mappedMovements };

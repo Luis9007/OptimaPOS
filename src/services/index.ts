@@ -16,3 +16,5 @@ export * from './purchaseService';
 export * from './salesService';
 export * from './settingsService';
 export * from './syncService';
+export * from './promotionService';
+export * from './priceAuditService';

@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Wallet, Lock, Unlock, ArrowDownCircle, ArrowUpCircle, Receipt, TrendingUp,
-  ChevronDown, ChevronUp, User, DollarSign, Package, Truck, Layers, FileText, Calendar, UserCheck, Eye, Printer, CheckCircle2, AlertTriangle, XCircle,
+  ChevronDown, ChevronUp, User, DollarSign, Package, Truck, Layers, FileText, Calendar, UserCheck, Eye, Printer, CheckCircle2, AlertTriangle,
 } from 'lucide-react';
 import { useStore } from '@/controllers/StoreController';
 import { useToast } from '@/views/components/ui/Toast';

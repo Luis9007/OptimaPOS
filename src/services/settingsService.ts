@@ -27,10 +27,11 @@ export const settingsService = {
           address: settings.address || '',
           phone: settings.phone || '',
           email: settings.email || '',
-          currency: settings.currency || 'MXN',
+          currency: settings.currency || 'COP',
           currencySymbol: settings.currency_symbol || '$',
-          taxRate: Number(settings.tax_rate) || 16,
-          logoText: settings.logo_text || 'StoreFlow',
+          taxRate: Number(settings.tax_rate) || 19,
+          logoText: settings.logo_text || 'Optima POS',
+          logoUrl: settings.logo_url || '',
           theme: settings.theme || 'dark',
         }
       : seedDatabase.settings;

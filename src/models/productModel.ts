@@ -73,7 +73,7 @@ export const productModel = {
    */
   async upsertProduct(p: Product): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('products').upsert({
+    const { error } = await supabase.from('products').upsert({
       id: p.id,
       sku: p.sku,
       barcode: p.barcode,
@@ -85,10 +85,14 @@ export const productModel = {
       price: p.price,
       stock: p.stock,
       min_stock: p.minStock,
- unit: p.unit,
+      unit: p.unit,
       active: p.active,
       favorite: p.favorite,
     });
+    if (error) {
+      console.error('Error al guardar producto en Supabase:', error);
+      throw error;
+    }
   },
 
   /**
@@ -96,7 +100,7 @@ export const productModel = {
    */
   async upsertRawProduct(payload: any): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('products').upsert({
+    const { error } = await supabase.from('products').upsert({
       id: payload.id,
       sku: payload.sku,
       barcode: payload.barcode,
@@ -112,6 +116,10 @@ export const productModel = {
       active: payload.active,
       favorite: payload.favorite,
     });
+    if (error) {
+      console.error('Error al guardar producto raw en Supabase:', error);
+      throw error;
+    }
   },
 
   /**
@@ -119,7 +127,11 @@ export const productModel = {
    */
   async deleteProduct(id: string): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('products').delete().eq('id', id);
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) {
+      console.error('Error al eliminar producto en Supabase:', error);
+      throw error;
+    }
   },
 
   /**
@@ -127,7 +139,11 @@ export const productModel = {
    */
   async updateStock(productId: string, newStock: number): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('products').update({ stock: newStock }).eq('id', productId);
+    const { error } = await supabase.from('products').update({ stock: newStock }).eq('id', productId);
+    if (error) {
+      console.error('Error al actualizar stock en Supabase:', error);
+      throw error;
+    }
   },
 
   /**
@@ -135,7 +151,7 @@ export const productModel = {
    */
   async insertAdjustment(adj: InventoryAdjustment): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('inventory_adjustments').insert({
+    const { error } = await supabase.from('inventory_adjustments').insert({
       id: adj.id,
       product_id: adj.productId,
       product_name: adj.productName,
@@ -146,6 +162,10 @@ export const productModel = {
       user_id: adj.userId,
       user_name: adj.userName,
     });
+    if (error) {
+      console.error('Error al registrar ajuste de inventario en Supabase:', error);
+      throw error;
+    }
   },
 
   /**

@@ -1,9 +1,9 @@
-# 📘 Documento Técnico — Optima POS v2.0
+# 📘 Documento Técnico — Optima POS v1.0
 **Sistema de Punto de Venta, Inventario, Comprobantes en Nube y Gestión Empresarial para Comercios Minoristas**
 
 ---
 
-> **Versión:** 2.0 — Agosto 2026  
+> **Versión:** 1.0 — Agosto 2026  
 > **Repositorio:** https://github.com/Luis9007/OptimaPOS  
 > **Stack:** React 18 + TypeScript + Vite + Supabase + Node.js + Express.js + Cloudflare R2 Object Storage  
 
@@ -11,9 +11,9 @@
 
 ## 1. Resumen Ejecutivo
 
-**Optima POS** es una plataforma web empresarial de código abierto diseñada para digitalizar y modernizar la gestión operativa de comercios minoristas (tiendas de abarrotes, minimarkets, boutiques, ferreterías). Opera bajo una **arquitectura desacoplada de 4 capas MVC + Service Layer** respaldada por un servidor **Backend Node.js / Express.js**, almacenamiento de archivos en la nube **Cloudflare R2** para comprobantes digitales y un **Motor Offline-First** que garantiza continuidad operativa sin conexión a internet.
+**Optima POS** es un sistema POS Cloud empresarial diseñado para digitalizar y modernizar la gestión operativa de comercios minoristas (tiendas de abarrotes, minimarkets, boutiques, ferreterías). Opera bajo una **arquitectura desacoplada de 4 capas MVC + Service Layer** respaldada por un servidor **Backend Node.js / Express.js**, almacenamiento de archivos en la nube **Cloudflare R2** para comprobantes digitales y un **Motor Offline-First** que garantiza continuidad operativa sin conexión a internet.
 
-La versión 2.0 incorpora la distinción entre la marca **Optima POS** y el comercio cliente activo, integración de comprobantes digitales en Cloudflare R2, motor de promociones y descuentos, auditoría automática de costos/precios, flujo completo de anulaciones con ajuste de inventario y cartera, además de mejoras en UX (formato de moneda con miles).
+La versión 1.0 incorpora la distinción entre la marca **Optima POS** y el comercio cliente activo, integración de comprobantes digitales en Cloudflare R2, motor de promociones y descuentos, auditoría automática de costos/precios, flujo completo de anulaciones con ajuste de inventario y cartera, además de mejoras en UX (formato de moneda con miles).
 
 ---
 
@@ -132,11 +132,11 @@ Los comercios minoristas de pequeño y mediano tamaño enfrentan retos críticos
 
 ---
 
-## 7. Historial de Cambios — Versión 2.0 (Agosto 2026)
+## 7. Historial de Cambios — Versión 1.0 (Agosto 2026)
 
 | Fecha | Cambio | Módulo |
 |---|---|---|
-| Ago 2026 | Rebranding a **Optima POS v2.0** en toda la plataforma | Global |
+| Ago 2026 | Lanzamiento oficial de **Optima POS v1.0** en toda la plataforma | Global |
 | Ago 2026 | Manual de Identidad de Marca oficial (`MANUAL_IDENTIDAD_MARCA.md`) | Raíz del proyecto |
 | Ago 2026 | Sistema de Carga Multiformato de Logotipos con Cloudflare R2 | `SettingsPage.tsx` / `storageService.ts` |
 | Ago 2026 | Visualización Dinámica de Marca (Login vs Tienda Activa en Sidebar/Topbar) | `Sidebar.tsx` / `Topbar.tsx` |
@@ -150,4 +150,4 @@ Los comercios minoristas de pequeño y mediano tamaño enfrentan retos críticos
 
 ---
 
-*Optima POS v2.0 — Documento Técnico. Todos los derechos reservados.*
+*Optima POS v1.0 — Documento Técnico. Todos los derechos reservados.*
