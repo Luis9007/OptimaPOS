@@ -60,32 +60,56 @@ Ofrece una **arquitectura desacoplada en 4 capas (MVC + Service Layer)** respald
 
 ---
 
-## ⚙️ Instalación y Ejecución Local
+## 🖥️ Puesta en Marcha Rápida en un Nuevo Equipo (Windows)
 
-### Prerrequisitos
-- **Node.js** v18+
-- **npm** v9+
+Si vas a instalar y ejecutar Optima POS en una nueva computadora de caja o mostrador, el sistema cuenta con scripts automatizados para que no tengas que usar terminales ni un IDE:
+
+### 1. Prerrequisitos en la nueva PC
+1. **Node.js**: Descargar e instalar la versión LTS recomendada desde [nodejs.org](https://nodejs.org/) (incluye `npm`).
+2. **Navegador**: Google Chrome o Microsoft Edge (preinstalado en Windows).
+3. **Git**: O descargar el código como archivo ZIP desde GitHub.
+
+### 2. Pasos de Instalación (2 Clics)
+
+1. **Clonar o descargar el proyecto:**
+   ```bash
+   git clone https://github.com/Luis9007/OptimaPOS.git
+   ```
+2. **Configurar credenciales (`.env`):**
+   Copia el archivo `.env.example` con el nombre `.env` y coloca las claves de conexión a Supabase y Cloudflare R2.
+3. **Crear el acceso directo con el logo:**
+   Entra a la carpeta del proyecto y haz doble clic sobre:
+   ```text
+   Crear_Acceso_Directo.bat
+   ```
+   > Esto creará automáticamente en tu **Escritorio** el acceso directo **"Optima POS"** configurado con el logo oficial (`optima.ico`).
+4. **Iniciar el sistema:**
+   Haz doble clic sobre el ícono de **Optima POS** en el Escritorio (o directamente sobre `Iniciar_OptimaPOS.bat`):
+   - **Primera ejecución:** Detectará que no existen las dependencias e instalará automáticamente `node_modules` sin que tengas que escribir comandos.
+   - **Arranque:** Levantará el backend y el frontend simultáneamente.
+   - **Modo Aplicación:** Abrirá el punto de venta en una ventana limpia e independiente (sin barra de navegación ni pestañas), luciendo como un software de escritorio nativo.
+
+### 3. Cierre de Jornada
+Al finalizar la jornada laboral, en la consola de Optima POS presiona cualquier tecla (o ciérrala con la **X**); los servidores se detendrán de forma limpia para no consumir recursos del equipo.
+
+---
+
+## ⚙️ Instalación y Ejecución Manual para Desarrolladores
+
+Si prefieres ejecutar el sistema de manera tradicional mediante comandos:
 
 ### Pasos
 
 ```bash
 # 1. Clonar el repositorio
 git clone https://github.com/Luis9007/OptimaPOS.git
-cd Optima\ POS
+cd OptimaPOS
 
 # 2. Instalar dependencias
 npm install
 
 # 3. Configurar variables de entorno
 cp .env.example .env
-# Editar .env con las credenciales de Supabase y Cloudflare R2:
-# VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
-# VITE_SUPABASE_ANON_KEY=tu-anon-key-aqui
-# VITE_R2_ACCOUNT_ID=tu_account_id
-# VITE_R2_ACCESS_KEY_ID=tu_access_key_id
-# VITE_R2_SECRET_ACCESS_KEY=tu_secret_access_key_aqui
-# VITE_R2_BUCKET_NAME=optimapos-comprobantes
-# VITE_R2_PUBLIC_DOMAIN=https://pub-xxxxxx.r2.dev
 
 # 4. Ejecutar (Frontend + Backend simultáneamente)
 npm run dev
@@ -98,4 +122,4 @@ npm run dev
 
 ---
 
-*Optima POS v1.0 — Agosto 2026*
+*Optima POS v1.0 — 2026*
