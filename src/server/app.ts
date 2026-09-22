@@ -5,6 +5,8 @@
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
 import apiRouter from './routes';
 
 const app = express();
@@ -19,5 +21,16 @@ app.use('/api', apiRouter);
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Servir archivos estáticos del frontend si la carpeta dist existe (producción / Railway)
+const distPath = path.resolve(process.cwd(), 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+
+  // Fallback para React Router SPA en Express 5
+  app.get('{*splat}', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 export default app;
